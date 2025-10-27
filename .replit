@@ -9,5 +9,5 @@ run = ["npm", "start"]
 deploymentTarget = "cloudrun"
 
 [[ports]]
-localPort = 3000
+localPort = 5000
 externalPort = 80
