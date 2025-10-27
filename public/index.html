@@ -360,6 +360,10 @@
             const [bulkUploadText, setBulkUploadText] = useState('');
             const [bulkUploadClient, setBulkUploadClient] = useState('');
             const [bulkUploadBillable, setBulkUploadBillable] = useState(false);
+            const [showBreakdownModal, setShowBreakdownModal] = useState(false);
+            const [taskToBreakdown, setTaskToBreakdown] = useState(null);
+            const [breakdownSubtasks, setBreakdownSubtasks] = useState([]);
+            const [isBreakingDown, setIsBreakingDown] = useState(false);
             const chatEndRef = useRef(null);
 
             // Load from localStorage on mount
@@ -561,6 +565,88 @@
                     setBulkUploadClient('');
                     setBulkUploadBillable(false);
                 }
+            };
+
+            const handleBreakdownTask = async (task) => {
+                setTaskToBreakdown(task);
+                setShowBreakdownModal(true);
+                setIsBreakingDown(true);
+                setBreakdownSubtasks([]);
+
+                try {
+                    const breakdownPrompt = `I have a task that feels overwhelming: "${task.title}"
+
+Please break this down into 3-5 smaller, concrete steps that I can do one at a time. Make each step:
+- Specific and actionable
+- Small enough to complete in one sitting
+- Clear about what "done" looks like
+
+Format your response as a simple numbered list, one step per line.`;
+
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            message: breakdownPrompt,
+                            mode: 'coach',
+                            apiKey: apiKey
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        // Parse the AI response to extract subtasks
+                        const lines = data.response.split('\n');
+                        const subtasks = [];
+
+                        lines.forEach(line => {
+                            const trimmed = line.trim();
+                            // Match numbered lists like "1. ", "1) ", or bullet points
+                            const match = trimmed.match(/^(?:\d+[\.)]\s*|[-•*]\s*)(.+)$/);
+                            if (match && match[1] && match[1].length > 3) {
+                                subtasks.push(match[1].trim());
+                            }
+                        });
+
+                        setBreakdownSubtasks(subtasks);
+                    } else {
+                        setBreakdownSubtasks(['Error: Could not get breakdown from AI']);
+                    }
+                } catch (error) {
+                    setBreakdownSubtasks(['Error: Failed to connect to AI']);
+                }
+
+                setIsBreakingDown(false);
+            };
+
+            const addSubtasksToList = () => {
+                if (breakdownSubtasks.length === 0 || !taskToBreakdown) return;
+
+                // Add each subtask as a new task with same properties as parent
+                const newTasks = breakdownSubtasks.map(subtaskTitle => ({
+                    id: Date.now() + Math.random(),
+                    title: subtaskTitle,
+                    category: taskToBreakdown.category || 'Uncategorized',
+                    energyRequired: taskToBreakdown.energyRequired || 'medium',
+                    view: taskToBreakdown.view || 'later',
+                    client: taskToBreakdown.client || '',
+                    billable: taskToBreakdown.billable || false,
+                    status: 'active',
+                    createdDate: Date.now()
+                }));
+
+                const currentTasks = Array.isArray(tasks) ? tasks : [];
+                const updatedTasks = [...currentTasks, ...newTasks];
+                setTasks(updatedTasks);
+                localStorage.setItem('calmCommanderTasks', JSON.stringify(updatedTasks));
+
+                // Close modal
+                setShowBreakdownModal(false);
+                setTaskToBreakdown(null);
+                setBreakdownSubtasks([]);
             };
 
             const detectCrisisMode = (text) => {
@@ -1160,6 +1246,20 @@
                                                                 <option value="later">Later</option>
                                                             </select>
                                                             <button
+                                                                onClick={() => handleBreakdownTask(task)}
+                                                                style={{
+                                                                    background: '#8b5cf6',
+                                                                    color: 'white',
+                                                                    border: 'none',
+                                                                    padding: '4px 8px',
+                                                                    borderRadius: '4px',
+                                                                    cursor: 'pointer',
+                                                                    fontSize: '12px'
+                                                                }}
+                                                            >
+                                                                Break Down
+                                                            </button>
+                                                            <button
                                                                 onClick={() => {
                                                                     setTaskToComplete(task);
                                                                     setShowCompleteModal(true);
@@ -1432,6 +1532,100 @@
                                             Add Tasks
                                         </button>
                                     </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Task Breakdown Modal */}
+                        {showBreakdownModal && taskToBreakdown && (
+                            <div style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: 'rgba(0, 0, 0, 0.5)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 1000
+                            }} onClick={() => !isBreakingDown && setShowBreakdownModal(false)}>
+                                <div style={{
+                                    background: 'white',
+                                    borderRadius: '16px',
+                                    padding: '30px',
+                                    maxWidth: '600px',
+                                    width: '90%',
+                                    maxHeight: '80vh',
+                                    overflowY: 'auto'
+                                }} onClick={(e) => e.stopPropagation()}>
+                                    <h3 style={{marginBottom: '15px', color: '#333'}}>Break Down Task</h3>
+                                    <p style={{marginBottom: '15px', padding: '12px', background: '#f9fafb', borderRadius: '8px', fontSize: '15px'}}>
+                                        <strong>{taskToBreakdown.title}</strong>
+                                    </p>
+
+                                    {isBreakingDown ? (
+                                        <div style={{textAlign: 'center', padding: '40px 20px'}}>
+                                            <p style={{fontSize: '16px', color: '#6b7280', marginBottom: '10px'}}>
+                                                Breaking this down into smaller steps...
+                                            </p>
+                                            <p style={{fontSize: '14px', color: '#9ca3af'}}>
+                                                The AI is thinking...
+                                            </p>
+                                        </div>
+                                    ) : breakdownSubtasks.length > 0 ? (
+                                        <div>
+                                            <h4 style={{fontSize: '15px', marginBottom: '12px', color: '#333'}}>
+                                                Suggested Steps:
+                                            </h4>
+                                            <ol style={{marginBottom: '20px', paddingLeft: '24px'}}>
+                                                {breakdownSubtasks.map((subtask, index) => (
+                                                    <li key={index} style={{
+                                                        marginBottom: '8px',
+                                                        fontSize: '14px',
+                                                        lineHeight: '1.5',
+                                                        color: '#374151'
+                                                    }}>
+                                                        {subtask}
+                                                    </li>
+                                                ))}
+                                            </ol>
+                                            <div style={{display: 'flex', gap: '10px', justifyContent: 'flex-end'}}>
+                                                <button
+                                                    onClick={() => {
+                                                        setShowBreakdownModal(false);
+                                                        setTaskToBreakdown(null);
+                                                        setBreakdownSubtasks([]);
+                                                    }}
+                                                    style={{
+                                                        padding: '10px 20px',
+                                                        background: '#6b7280',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        borderRadius: '8px',
+                                                        cursor: 'pointer',
+                                                        fontWeight: 600
+                                                    }}
+                                                >
+                                                    Cancel
+                                                </button>
+                                                <button
+                                                    onClick={addSubtasksToList}
+                                                    style={{
+                                                        padding: '10px 20px',
+                                                        background: '#8b5cf6',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        borderRadius: '8px',
+                                                        cursor: 'pointer',
+                                                        fontWeight: 600
+                                                    }}
+                                                >
+                                                    Add These Steps as Tasks
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : null}
                                 </div>
                             </div>
                         )}
