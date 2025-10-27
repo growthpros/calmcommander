@@ -356,6 +356,8 @@
             const [calendarInput, setCalendarInput] = useState('');
             const [showCompleteModal, setShowCompleteModal] = useState(false);
             const [taskToComplete, setTaskToComplete] = useState(null);
+            const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
+            const [bulkUploadText, setBulkUploadText] = useState('');
             const chatEndRef = useRef(null);
 
             // Load from localStorage on mount
@@ -507,6 +509,50 @@
                 };
                 setDailyEnergy(energy);
                 localStorage.setItem('ccDailyEnergy', JSON.stringify(energy));
+            };
+
+            const handleBulkUpload = () => {
+                if (!bulkUploadText.trim()) return;
+
+                // Parse text into individual tasks
+                const lines = bulkUploadText.split('\n');
+                const newTasks = [];
+
+                lines.forEach(line => {
+                    const trimmed = line.trim();
+                    // Skip empty lines and very short entries
+                    if (trimmed && trimmed.length > 2) {
+                        // Remove common prefixes like bullets, numbers, checkboxes
+                        let taskText = trimmed
+                            .replace(/^[-•*]\s*/, '')  // Remove bullet points
+                            .replace(/^\d+[\.)]\s*/, '')  // Remove numbered lists
+                            .replace(/^[\[\(]?\s*[xX\s]?\s*[\]\)]?\s*/, '')  // Remove checkboxes
+                            .trim();
+
+                        if (taskText && taskText.length > 2) {
+                            newTasks.push({
+                                id: Date.now() + Math.random(),
+                                title: taskText,
+                                category: 'Bulk Upload',
+                                energyRequired: 'medium',
+                                view: 'later',  // Brain dump location
+                                status: 'active',
+                                createdDate: Date.now()
+                            });
+                        }
+                    }
+                });
+
+                if (newTasks.length > 0) {
+                    const currentTasks = Array.isArray(tasks) ? tasks : [];
+                    const updatedTasks = [...currentTasks, ...newTasks];
+                    setTasks(updatedTasks);
+                    localStorage.setItem('calmCommanderTasks', JSON.stringify(updatedTasks));
+
+                    // Close modal and reset
+                    setShowBulkUploadModal(false);
+                    setBulkUploadText('');
+                }
             };
 
             const detectCrisisMode = (text) => {
@@ -807,6 +853,28 @@
                             />
                             <p style={{fontSize: '12px', color: '#6b7280', marginTop: '8px'}}>
                                 This helps calculate your available work time
+                            </p>
+                        </div>
+
+                        {/* Bulk Upload Button */}
+                        <div style={{marginBottom: '20px', textAlign: 'center'}}>
+                            <button
+                                onClick={() => setShowBulkUploadModal(true)}
+                                style={{
+                                    padding: '12px 24px',
+                                    background: '#667eea',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontSize: '15px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Bulk Upload Tasks
+                            </button>
+                            <p style={{fontSize: '12px', color: '#6b7280', marginTop: '8px'}}>
+                                Paste your entire task list at once
                             </p>
                         </div>
 
@@ -1206,6 +1274,89 @@
                                             }}
                                         >
                                             Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Bulk Upload Modal */}
+                        {showBulkUploadModal && (
+                            <div style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: 'rgba(0, 0, 0, 0.5)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 1000
+                            }} onClick={() => setShowBulkUploadModal(false)}>
+                                <div style={{
+                                    background: 'white',
+                                    borderRadius: '16px',
+                                    padding: '30px',
+                                    maxWidth: '600px',
+                                    width: '90%',
+                                    maxHeight: '80vh',
+                                    display: 'flex',
+                                    flexDirection: 'column'
+                                }} onClick={(e) => e.stopPropagation()}>
+                                    <h3 style={{marginBottom: '15px'}}>Bulk Upload Tasks</h3>
+                                    <p style={{marginBottom: '15px', color: '#6b7280', fontSize: '14px'}}>
+                                        Paste your task list below - one task per line. All tasks will be added to "Later" view with medium energy.
+                                    </p>
+                                    <textarea
+                                        value={bulkUploadText}
+                                        onChange={(e) => setBulkUploadText(e.target.value)}
+                                        placeholder="Example:&#10;Finish project proposal&#10;Email client about timeline&#10;Review quarterly budget&#10;Schedule team meeting"
+                                        style={{
+                                            width: '100%',
+                                            minHeight: '300px',
+                                            padding: '12px',
+                                            border: '2px solid #e5e7eb',
+                                            borderRadius: '8px',
+                                            fontSize: '14px',
+                                            fontFamily: 'inherit',
+                                            resize: 'vertical',
+                                            marginBottom: '20px',
+                                            flex: 1
+                                        }}
+                                    />
+                                    <div style={{display: 'flex', gap: '10px', justifyContent: 'flex-end'}}>
+                                        <button
+                                            onClick={() => {
+                                                setShowBulkUploadModal(false);
+                                                setBulkUploadText('');
+                                            }}
+                                            style={{
+                                                padding: '10px 20px',
+                                                background: '#6b7280',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '8px',
+                                                cursor: 'pointer',
+                                                fontWeight: 600
+                                            }}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={handleBulkUpload}
+                                            disabled={!bulkUploadText.trim()}
+                                            style={{
+                                                padding: '10px 20px',
+                                                background: bulkUploadText.trim() ? '#667eea' : '#9ca3af',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '8px',
+                                                cursor: bulkUploadText.trim() ? 'pointer' : 'not-allowed',
+                                                fontWeight: 600
+                                            }}
+                                        >
+                                            Add Tasks
                                         </button>
                                     </div>
                                 </div>
