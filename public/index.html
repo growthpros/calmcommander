@@ -358,6 +358,8 @@
             const [taskToComplete, setTaskToComplete] = useState(null);
             const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
             const [bulkUploadText, setBulkUploadText] = useState('');
+            const [bulkUploadClient, setBulkUploadClient] = useState('');
+            const [bulkUploadBillable, setBulkUploadBillable] = useState(false);
             const chatEndRef = useRef(null);
 
             // Load from localStorage on mount
@@ -443,13 +445,15 @@
             };
 
             // Task management functions
-            const addTask = (title, category = 'Uncategorized', energyRequired = 'medium', view = 'later') => {
+            const addTask = (title, category = 'Uncategorized', energyRequired = 'medium', view = 'later', client = '', billable = false) => {
                 const newTask = {
                     id: Date.now(),
                     title: title,
                     category: category,
                     energyRequired: energyRequired,
                     view: view,
+                    client: client,
+                    billable: billable,
                     status: 'active',
                     createdDate: Date.now()
                 };
@@ -536,6 +540,8 @@
                                 category: 'Bulk Upload',
                                 energyRequired: 'medium',
                                 view: 'later',  // Brain dump location
+                                client: bulkUploadClient.trim(),
+                                billable: bulkUploadBillable,
                                 status: 'active',
                                 createdDate: Date.now()
                             });
@@ -552,6 +558,8 @@
                     // Close modal and reset
                     setShowBulkUploadModal(false);
                     setBulkUploadText('');
+                    setBulkUploadClient('');
+                    setBulkUploadBillable(false);
                 }
             };
 
@@ -895,9 +903,11 @@
                                         fontSize: '13px'
                                     }}
                                     onClick={() => {
-                                        const taskTitle = prompt('Add low energy task:');
+                                        const taskTitle = prompt('Task name:');
                                         if (taskTitle && taskTitle.trim()) {
-                                            addTask(taskTitle.trim(), 'Uncategorized', 'low');
+                                            const client = prompt('Client name (or leave blank):') || '';
+                                            const billable = client ? confirm('Is this billable work?') : false;
+                                            addTask(taskTitle.trim(), 'Uncategorized', 'low', 'later', client.trim(), billable);
                                         }
                                     }}
                                 >
@@ -916,9 +926,11 @@
                                         fontSize: '13px'
                                     }}
                                     onClick={() => {
-                                        const taskTitle = prompt('Add medium energy task:');
+                                        const taskTitle = prompt('Task name:');
                                         if (taskTitle && taskTitle.trim()) {
-                                            addTask(taskTitle.trim(), 'Uncategorized', 'medium');
+                                            const client = prompt('Client name (or leave blank):') || '';
+                                            const billable = client ? confirm('Is this billable work?') : false;
+                                            addTask(taskTitle.trim(), 'Uncategorized', 'medium', 'later', client.trim(), billable);
                                         }
                                     }}
                                 >
@@ -937,9 +949,11 @@
                                         fontSize: '13px'
                                     }}
                                     onClick={() => {
-                                        const taskTitle = prompt('Add high energy task:');
+                                        const taskTitle = prompt('Task name:');
                                         if (taskTitle && taskTitle.trim()) {
-                                            addTask(taskTitle.trim(), 'Uncategorized', 'high');
+                                            const client = prompt('Client name (or leave blank):') || '';
+                                            const billable = client ? confirm('Is this billable work?') : false;
+                                            addTask(taskTitle.trim(), 'Uncategorized', 'high', 'later', client.trim(), billable);
                                         }
                                     }}
                                 >
@@ -1102,6 +1116,32 @@
                                                             }}>
                                                                 {task.energyRequired || 'medium'} energy
                                                             </span>
+                                                            {task.client && (
+                                                                <span style={{
+                                                                    marginLeft: '8px',
+                                                                    fontSize: '11px',
+                                                                    padding: '2px 6px',
+                                                                    borderRadius: '4px',
+                                                                    background: '#e0e7ff',
+                                                                    color: '#3730a3',
+                                                                    fontWeight: 600
+                                                                }}>
+                                                                    {task.client}
+                                                                </span>
+                                                            )}
+                                                            {task.billable && (
+                                                                <span style={{
+                                                                    marginLeft: '6px',
+                                                                    fontSize: '11px',
+                                                                    padding: '2px 6px',
+                                                                    borderRadius: '4px',
+                                                                    background: '#d1fae5',
+                                                                    color: '#065f46',
+                                                                    fontWeight: 700
+                                                                }}>
+                                                                    $ Billable
+                                                                </span>
+                                                            )}
                                                         </div>
                                                         <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
                                                             <select
@@ -1308,13 +1348,44 @@
                                     <p style={{marginBottom: '15px', color: '#6b7280', fontSize: '14px'}}>
                                         Paste your task list below - one task per line. All tasks will be added to "Later" view with medium energy.
                                     </p>
+
+                                    {/* Client and Billable fields */}
+                                    <div style={{marginBottom: '15px', padding: '15px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb'}}>
+                                        <label style={{display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 600, color: '#333'}}>
+                                            Client (optional - applies to all tasks):
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={bulkUploadClient}
+                                            onChange={(e) => setBulkUploadClient(e.target.value)}
+                                            placeholder="Leave blank if not for a specific client"
+                                            style={{
+                                                width: '100%',
+                                                padding: '8px 12px',
+                                                border: '2px solid #e5e7eb',
+                                                borderRadius: '6px',
+                                                fontSize: '14px',
+                                                marginBottom: '10px'
+                                            }}
+                                        />
+                                        <label style={{display: 'flex', alignItems: 'center', fontSize: '13px', cursor: 'pointer'}}>
+                                            <input
+                                                type="checkbox"
+                                                checked={bulkUploadBillable}
+                                                onChange={(e) => setBulkUploadBillable(e.target.checked)}
+                                                style={{marginRight: '8px', cursor: 'pointer'}}
+                                            />
+                                            <span style={{fontWeight: 600, color: '#333'}}>Mark all as billable</span>
+                                        </label>
+                                    </div>
+
                                     <textarea
                                         value={bulkUploadText}
                                         onChange={(e) => setBulkUploadText(e.target.value)}
                                         placeholder="Example:&#10;Finish project proposal&#10;Email client about timeline&#10;Review quarterly budget&#10;Schedule team meeting"
                                         style={{
                                             width: '100%',
-                                            minHeight: '300px',
+                                            minHeight: '250px',
                                             padding: '12px',
                                             border: '2px solid #e5e7eb',
                                             borderRadius: '8px',
@@ -1330,6 +1401,8 @@
                                             onClick={() => {
                                                 setShowBulkUploadModal(false);
                                                 setBulkUploadText('');
+                                                setBulkUploadClient('');
+                                                setBulkUploadBillable(false);
                                             }}
                                             style={{
                                                 padding: '10px 20px',
