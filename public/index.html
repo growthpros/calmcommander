@@ -364,6 +364,11 @@
             const [taskToBreakdown, setTaskToBreakdown] = useState(null);
             const [breakdownSubtasks, setBreakdownSubtasks] = useState([]);
             const [isBreakingDown, setIsBreakingDown] = useState(false);
+            const [showBillingView, setShowBillingView] = useState(false);
+            const [billingMonth, setBillingMonth] = useState(() => {
+                const now = new Date();
+                return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            });
             const chatEndRef = useRef(null);
 
             // Load from localStorage on mount
@@ -950,26 +955,50 @@ Format your response as a simple numbered list, one step per line.`;
                             </p>
                         </div>
 
-                        {/* Bulk Upload Button */}
-                        <div style={{marginBottom: '20px', textAlign: 'center'}}>
-                            <button
-                                onClick={() => setShowBulkUploadModal(true)}
-                                style={{
-                                    padding: '12px 24px',
-                                    background: '#667eea',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    fontSize: '15px',
-                                    fontWeight: 600,
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                Bulk Upload Tasks
-                            </button>
-                            <p style={{fontSize: '12px', color: '#6b7280', marginTop: '8px'}}>
-                                Paste your entire task list at once
-                            </p>
+                        {/* Bulk Upload and Billing Buttons */}
+                        <div style={{marginBottom: '20px', textAlign: 'center', display: 'flex', gap: '10px', justifyContent: 'center'}}>
+                            <div style={{flex: 1, maxWidth: '300px'}}>
+                                <button
+                                    onClick={() => setShowBulkUploadModal(true)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px 24px',
+                                        background: '#667eea',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        fontSize: '15px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Bulk Upload Tasks
+                                </button>
+                                <p style={{fontSize: '12px', color: '#6b7280', marginTop: '8px'}}>
+                                    Paste your entire task list
+                                </p>
+                            </div>
+                            <div style={{flex: 1, maxWidth: '300px'}}>
+                                <button
+                                    onClick={() => setShowBillingView(true)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px 24px',
+                                        background: '#10b981',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        fontSize: '15px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    View Billing
+                                </button>
+                                <p style={{fontSize: '12px', color: '#6b7280', marginTop: '8px'}}>
+                                    Hours by client for invoicing
+                                </p>
+                            </div>
                         </div>
 
                         {/* Quick Add Task Buttons */}
@@ -1532,6 +1561,201 @@ Format your response as a simple numbered list, one step per line.`;
                                             Add Tasks
                                         </button>
                                     </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Monthly Billing View Modal */}
+                        {showBillingView && (
+                            <div style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: 'rgba(0, 0, 0, 0.5)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 1000
+                            }} onClick={() => setShowBillingView(false)}>
+                                <div style={{
+                                    background: 'white',
+                                    borderRadius: '16px',
+                                    padding: '30px',
+                                    maxWidth: '800px',
+                                    width: '90%',
+                                    maxHeight: '80vh',
+                                    overflowY: 'auto'
+                                }} onClick={(e) => e.stopPropagation()}>
+                                    <h3 style={{marginBottom: '20px', color: '#333'}}>Monthly Billing Report</h3>
+
+                                    {/* Month Selector */}
+                                    <div style={{marginBottom: '20px'}}>
+                                        <label style={{display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 600}}>
+                                            Select Month:
+                                        </label>
+                                        <input
+                                            type="month"
+                                            value={billingMonth}
+                                            onChange={(e) => setBillingMonth(e.target.value)}
+                                            style={{
+                                                padding: '8px 12px',
+                                                border: '2px solid #e5e7eb',
+                                                borderRadius: '6px',
+                                                fontSize: '14px'
+                                            }}
+                                        />
+                                    </div>
+
+                                    {(() => {
+                                        // Filter completed tasks for selected month
+                                        const [year, month] = billingMonth.split('-');
+                                        const startDate = new Date(year, month - 1, 1).getTime();
+                                        const endDate = new Date(year, month, 0, 23, 59, 59).getTime();
+
+                                        const monthTasks = completedTasks.filter(task => {
+                                            return task.completedDate >= startDate && task.completedDate <= endDate;
+                                        });
+
+                                        // Group by client
+                                        const byClient = {};
+                                        let totalHours = 0;
+                                        let billableHours = 0;
+
+                                        monthTasks.forEach(task => {
+                                            const clientName = task.client || 'No Client';
+                                            const hours = parseFloat(task.actualTime) || 0;
+
+                                            if (!byClient[clientName]) {
+                                                byClient[clientName] = {
+                                                    tasks: [],
+                                                    totalHours: 0,
+                                                    billableHours: 0
+                                                };
+                                            }
+
+                                            byClient[clientName].tasks.push(task);
+                                            byClient[clientName].totalHours += hours;
+
+                                            if (task.billable) {
+                                                byClient[clientName].billableHours += hours;
+                                                billableHours += hours;
+                                            }
+
+                                            totalHours += hours;
+                                        });
+
+                                        const clients = Object.keys(byClient).sort();
+
+                                        return (
+                                            <div>
+                                                {/* Summary */}
+                                                <div style={{
+                                                    background: '#f9fafb',
+                                                    padding: '15px',
+                                                    borderRadius: '8px',
+                                                    marginBottom: '20px',
+                                                    border: '2px solid #e5e7eb'
+                                                }}>
+                                                    <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '8px'}}>
+                                                        <span style={{fontWeight: 600}}>Total Hours:</span>
+                                                        <span style={{fontSize: '18px', fontWeight: 700, color: '#333'}}>
+                                                            {totalHours.toFixed(2)}h
+                                                        </span>
+                                                    </div>
+                                                    <div style={{display: 'flex', justifyContent: 'space-between'}}>
+                                                        <span style={{fontWeight: 600, color: '#065f46'}}>Billable Hours:</span>
+                                                        <span style={{fontSize: '18px', fontWeight: 700, color: '#065f46'}}>
+                                                            {billableHours.toFixed(2)}h
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {clients.length === 0 ? (
+                                                    <p style={{textAlign: 'center', color: '#6b7280', padding: '40px'}}>
+                                                        No completed tasks for this month
+                                                    </p>
+                                                ) : (
+                                                    clients.map(clientName => {
+                                                        const client = byClient[clientName];
+                                                        return (
+                                                            <div key={clientName} style={{
+                                                                marginBottom: '20px',
+                                                                border: '1px solid #e5e7eb',
+                                                                borderRadius: '8px',
+                                                                overflow: 'hidden'
+                                                            }}>
+                                                                <div style={{
+                                                                    background: '#f3f4f6',
+                                                                    padding: '12px 15px',
+                                                                    borderBottom: '1px solid #e5e7eb'
+                                                                }}>
+                                                                    <h4 style={{margin: 0, fontSize: '16px', color: '#333'}}>
+                                                                        {clientName}
+                                                                    </h4>
+                                                                    <div style={{fontSize: '13px', color: '#6b7280', marginTop: '4px'}}>
+                                                                        Total: {client.totalHours.toFixed(2)}h
+                                                                        {client.billableHours > 0 && (
+                                                                            <span style={{marginLeft: '12px', color: '#065f46', fontWeight: 600}}>
+                                                                                Billable: {client.billableHours.toFixed(2)}h
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                <div style={{padding: '15px'}}>
+                                                                    {client.tasks.map(task => (
+                                                                        <div key={task.id} style={{
+                                                                            marginBottom: '8px',
+                                                                            paddingBottom: '8px',
+                                                                            borderBottom: '1px solid #f3f4f6',
+                                                                            fontSize: '14px'
+                                                                        }}>
+                                                                            <div style={{display: 'flex', justifyContent: 'space-between'}}>
+                                                                                <span>{task.title}</span>
+                                                                                <span style={{fontWeight: 600}}>
+                                                                                    {parseFloat(task.actualTime).toFixed(2)}h
+                                                                                </span>
+                                                                            </div>
+                                                                            {task.billable && (
+                                                                                <span style={{
+                                                                                    fontSize: '11px',
+                                                                                    padding: '2px 6px',
+                                                                                    borderRadius: '4px',
+                                                                                    background: '#d1fae5',
+                                                                                    color: '#065f46',
+                                                                                    fontWeight: 600
+                                                                                }}>
+                                                                                    $ Billable
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })
+                                                )}
+
+                                                <div style={{display: 'flex', justifyContent: 'flex-end', marginTop: '20px'}}>
+                                                    <button
+                                                        onClick={() => setShowBillingView(false)}
+                                                        style={{
+                                                            padding: '10px 20px',
+                                                            background: '#6b7280',
+                                                            color: 'white',
+                                                            border: 'none',
+                                                            borderRadius: '8px',
+                                                            cursor: 'pointer',
+                                                            fontWeight: 600
+                                                        }}
+                                                    >
+                                                        Close
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                         )}
