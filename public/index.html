@@ -349,6 +349,7 @@
             const [tasks, setTasks] = useState([]);
             const [completedTasks, setCompletedTasks] = useState([]);
             const [currentMode, setCurrentMode] = useState('coach');
+            const [currentView, setCurrentView] = useState('today');
             const [inputMessage, setInputMessage] = useState('');
             const [isLoading, setIsLoading] = useState(false);
             const [dailyEnergy, setDailyEnergy] = useState(null);
@@ -439,12 +440,13 @@
             };
 
             // Task management functions
-            const addTask = (title, category = 'Uncategorized', energyRequired = 'medium') => {
+            const addTask = (title, category = 'Uncategorized', energyRequired = 'medium', view = 'later') => {
                 const newTask = {
                     id: Date.now(),
                     title: title,
                     category: category,
                     energyRequired: energyRequired,
+                    view: view,
                     status: 'active',
                     createdDate: Date.now()
                 };
@@ -457,6 +459,14 @@
 
             const deleteTask = (taskId) => {
                 const updatedTasks = tasks.filter(t => t.id !== taskId);
+                setTasks(updatedTasks);
+                localStorage.setItem('calmCommanderTasks', JSON.stringify(updatedTasks));
+            };
+
+            const moveTask = (taskId, newView) => {
+                const updatedTasks = tasks.map(t =>
+                    t.id === taskId ? { ...t, view: newView } : t
+                );
                 setTasks(updatedTasks);
                 localStorage.setItem('calmCommanderTasks', JSON.stringify(updatedTasks));
             };
@@ -868,9 +878,12 @@
                             </button>
                         </div>
 
-                        {/* Master Task List */}
+                        {/* View Tabs + Task List */}
                         {tasks.length > 0 && (() => {
-                            // Energy-based filtering logic
+                            // First filter by view
+                            const tasksInView = tasks.filter(t => t.view === currentView);
+
+                            // Then filter by energy
                             const filterTasksByEnergy = (taskList) => {
                                 if (!dailyEnergy) return taskList; // No energy set, show all
 
@@ -883,12 +896,76 @@
                                 });
                             };
 
-                            const filteredTasks = filterTasksByEnergy(tasks);
-                            const hiddenCount = tasks.length - filteredTasks.length;
+                            const filteredTasks = filterTasksByEnergy(tasksInView);
+                            const hiddenCount = tasksInView.length - filteredTasks.length;
+
+                            // Count tasks per view
+                            const todayCount = tasks.filter(t => t.view === 'today').length;
+                            const weekCount = tasks.filter(t => t.view === 'this-week').length;
+                            const laterCount = tasks.filter(t => t.view === 'later').length;
 
                             return (
                                 <div className="tasks-section">
-                                    <h3>Master Task List ({filteredTasks.length} tasks {dailyEnergy && `for ${dailyEnergy.level} energy`})</h3>
+                                    {/* View Tabs */}
+                                    <div style={{
+                                        display: 'flex',
+                                        gap: '8px',
+                                        marginBottom: '20px',
+                                        borderBottom: '2px solid #e5e7eb',
+                                        paddingBottom: '10px'
+                                    }}>
+                                        <button
+                                            onClick={() => setCurrentView('today')}
+                                            style={{
+                                                padding: '8px 16px',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                borderBottom: currentView === 'today' ? '3px solid #667eea' : '3px solid transparent',
+                                                fontSize: '15px',
+                                                fontWeight: 600,
+                                                color: currentView === 'today' ? '#667eea' : '#6b7280',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            Today ({todayCount})
+                                        </button>
+                                        <button
+                                            onClick={() => setCurrentView('this-week')}
+                                            style={{
+                                                padding: '8px 16px',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                borderBottom: currentView === 'this-week' ? '3px solid #667eea' : '3px solid transparent',
+                                                fontSize: '15px',
+                                                fontWeight: 600,
+                                                color: currentView === 'this-week' ? '#667eea' : '#6b7280',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            This Week ({weekCount})
+                                        </button>
+                                        <button
+                                            onClick={() => setCurrentView('later')}
+                                            style={{
+                                                padding: '8px 16px',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                borderBottom: currentView === 'later' ? '3px solid #667eea' : '3px solid transparent',
+                                                fontSize: '15px',
+                                                fontWeight: 600,
+                                                color: currentView === 'later' ? '#667eea' : '#6b7280',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            Later ({laterCount})
+                                        </button>
+                                    </div>
+
+                                    <h3 style={{marginBottom: '15px'}}>
+                                        {currentView === 'today' ? 'Today' : currentView === 'this-week' ? 'This Week' : 'Later'}
+                                        {' '}({filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''} {dailyEnergy && `for ${dailyEnergy.level} energy`})
+                                    </h3>
+
                                     {hiddenCount > 0 && dailyEnergy && (
                                         <div style={{
                                             background: '#fef3c7',
@@ -928,7 +1005,22 @@
                                                                 {task.energyRequired || 'medium'} energy
                                                             </span>
                                                         </div>
-                                                        <div style={{display: 'flex', gap: '8px'}}>
+                                                        <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
+                                                            <select
+                                                                value={task.view}
+                                                                onChange={(e) => moveTask(task.id, e.target.value)}
+                                                                style={{
+                                                                    padding: '4px 8px',
+                                                                    borderRadius: '4px',
+                                                                    border: '1px solid #e5e7eb',
+                                                                    fontSize: '12px',
+                                                                    cursor: 'pointer'
+                                                                }}
+                                                            >
+                                                                <option value="today">Today</option>
+                                                                <option value="this-week">This Week</option>
+                                                                <option value="later">Later</option>
+                                                            </select>
                                                             <button
                                                                 onClick={() => {
                                                                     setTaskToComplete(task);
