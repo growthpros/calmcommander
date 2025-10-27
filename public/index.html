@@ -346,7 +346,7 @@
             const [apiKey, setApiKey] = useState('');
             const [isSetup, setIsSetup] = useState(false);
             const [messages, setMessages] = useState([]);
-            const [tasks, setTasks] = useState({ now: [], soon: [], later: [] });
+            const [tasks, setTasks] = useState([]);
             const [currentMode, setCurrentMode] = useState('coach');
             const [inputMessage, setInputMessage] = useState('');
             const [isLoading, setIsLoading] = useState(false);
@@ -403,48 +403,62 @@
                 }
             };
 
+            // Task management functions
+            const addTask = (title, category = 'Uncategorized') => {
+                const newTask = {
+                    id: Date.now(),
+                    title: title,
+                    category: category,
+                    status: 'active',
+                    createdDate: Date.now()
+                };
+                const updatedTasks = [...tasks, newTask];
+                setTasks(updatedTasks);
+                localStorage.setItem('calmCommanderTasks', JSON.stringify(updatedTasks));
+            };
+
+            const deleteTask = (taskId) => {
+                const updatedTasks = tasks.filter(t => t.id !== taskId);
+                setTasks(updatedTasks);
+                localStorage.setItem('calmCommanderTasks', JSON.stringify(updatedTasks));
+            };
+
             const detectCrisisMode = (text) => {
                 const lowerText = text.toLowerCase();
                 return CRISIS_KEYWORDS.some(keyword => lowerText.includes(keyword));
             };
 
             const parseTasks = (responseText) => {
-                const newTasks = { now: [], soon: [], later: [] };
+                // Simple task parsing for Step 1
+                // Just extract tasks that AI mentions with emoji markers
                 const lines = responseText.split('\n');
+                const foundTasks = [];
 
                 lines.forEach(line => {
                     const trimmed = line.trim();
                     if (!trimmed) return;
 
-                    // Check for Now tasks
-                    if (trimmed.startsWith('✅') || trimmed.toLowerCase().includes('now:') || trimmed.toLowerCase().includes('do now:')) {
-                        const task = trimmed.replace(/^✅\s*/, '').replace(/now:/i, '').replace(/do now:/i, '').trim();
-                        if (task) newTasks.now.push(task);
-                    }
-                    // Check for Soon tasks
-                    else if (trimmed.startsWith('⏳') || trimmed.toLowerCase().includes('soon:') || trimmed.toLowerCase().includes('delay:')) {
-                        const task = trimmed.replace(/^⏳\s*/, '').replace(/soon:/i, '').replace(/delay:/i, '').trim();
-                        if (task) newTasks.soon.push(task);
-                    }
-                    // Check for Later tasks
-                    else if (trimmed.startsWith('📅') || trimmed.toLowerCase().includes('later:') || trimmed.toLowerCase().includes('ask for help:')) {
-                        const task = trimmed.replace(/^📅\s*/, '').replace(/^💬\s*/, '').replace(/later:/i, '').replace(/ask for help:/i, '').trim();
-                        if (task) newTasks.later.push(task);
+                    // Look for task markers
+                    if (trimmed.startsWith('✅') || trimmed.startsWith('⏳') || trimmed.startsWith('📅')) {
+                        const taskText = trimmed.replace(/^[✅⏳📅💬]\s*/, '').replace(/now:|soon:|later:|do now:|delay:|ask for help:/i, '').trim();
+                        if (taskText && taskText.length > 3) {
+                            foundTasks.push(taskText);
+                        }
                     }
                 });
 
-                // Only update if we found new tasks
-                if (newTasks.now.length > 0 || newTasks.soon.length > 0 || newTasks.later.length > 0) {
-                    setTasks(prev => ({
-                        now: [...prev.now, ...newTasks.now],
-                        soon: [...prev.soon, ...newTasks.soon],
-                        later: [...prev.later, ...newTasks.later]
+                // Add found tasks to master list
+                if (foundTasks.length > 0) {
+                    const newTaskObjects = foundTasks.map(taskText => ({
+                        id: Date.now() + Math.random(),
+                        title: taskText,
+                        category: 'From AI',
+                        status: 'active',
+                        createdDate: Date.now()
                     }));
-                    localStorage.setItem('calmCommanderTasks', JSON.stringify({
-                        now: [...tasks.now, ...newTasks.now],
-                        soon: [...tasks.soon, ...newTasks.soon],
-                        later: [...tasks.later, ...newTasks.later]
-                    }));
+                    const updatedTasks = [...tasks, ...newTaskObjects];
+                    setTasks(updatedTasks);
+                    localStorage.setItem('calmCommanderTasks', JSON.stringify(updatedTasks));
                 }
             };
 
@@ -596,6 +610,20 @@
                     </div>
 
                     <div className="content">
+                        {/* Quick Add Task Button */}
+                        <button
+                            className="btn-primary"
+                            style={{marginBottom: '20px', width: '100%'}}
+                            onClick={() => {
+                                const taskTitle = prompt('What task do you want to add?');
+                                if (taskTitle && taskTitle.trim()) {
+                                    addTask(taskTitle.trim());
+                                }
+                            }}
+                        >
+                            + Quick Add Task
+                        </button>
+
                         <div className="chat-container">
                             {messages.map((msg, index) => (
                                 <div key={index} className={`message ${msg.role}`}>
@@ -624,48 +652,44 @@
                             </button>
                         </div>
 
-                        {(tasks.now.length > 0 || tasks.soon.length > 0 || tasks.later.length > 0) && (
+                        {/* Master Task List */}
+                        {tasks.length > 0 && (
                             <div className="tasks-section">
-                                <h3>Your Tasks</h3>
+                                <h3>Master Task List ({tasks.length} tasks)</h3>
 
-                                <div className="task-category">
-                                    <h4 style={{color: '#22c55e'}}>Now</h4>
-                                    {tasks.now.length > 0 ? (
+                                {Object.entries(
+                                    tasks.reduce((acc, task) => {
+                                        const cat = task.category || 'Uncategorized';
+                                        if (!acc[cat]) acc[cat] = [];
+                                        acc[cat].push(task);
+                                        return acc;
+                                    }, {})
+                                ).map(([category, categoryTasks]) => (
+                                    <div key={category} className="task-category">
+                                        <h4>{category} ({categoryTasks.length})</h4>
                                         <ul className="task-list">
-                                            {tasks.now.map((task, i) => (
-                                                <li key={i} className="task-item now">{task}</li>
+                                            {categoryTasks.map((task) => (
+                                                <li key={task.id} className="task-item now" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                                    <span>{task.title}</span>
+                                                    <button
+                                                        onClick={() => deleteTask(task.id)}
+                                                        style={{
+                                                            background: '#ef4444',
+                                                            color: 'white',
+                                                            border: 'none',
+                                                            padding: '4px 8px',
+                                                            borderRadius: '4px',
+                                                            cursor: 'pointer',
+                                                            fontSize: '12px'
+                                                        }}
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </li>
                                             ))}
                                         </ul>
-                                    ) : (
-                                        <div className="empty-state">No urgent tasks</div>
-                                    )}
-                                </div>
-
-                                <div className="task-category">
-                                    <h4 style={{color: '#fbbf24'}}>Soon</h4>
-                                    {tasks.soon.length > 0 ? (
-                                        <ul className="task-list">
-                                            {tasks.soon.map((task, i) => (
-                                                <li key={i} className="task-item soon">{task}</li>
-                                            ))}
-                                        </ul>
-                                    ) : (
-                                        <div className="empty-state">Nothing scheduled soon</div>
-                                    )}
-                                </div>
-
-                                <div className="task-category">
-                                    <h4 style={{color: '#94a3b8'}}>Later</h4>
-                                    {tasks.later.length > 0 ? (
-                                        <ul className="task-list">
-                                            {tasks.later.map((task, i) => (
-                                                <li key={i} className="task-item later">{task}</li>
-                                            ))}
-                                        </ul>
-                                    ) : (
-                                        <div className="empty-state">No future tasks</div>
-                                    )}
-                                </div>
+                                    </div>
+                                ))}
                             </div>
                         )}
                     </div>
