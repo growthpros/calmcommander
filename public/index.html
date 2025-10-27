@@ -347,10 +347,13 @@
             const [isSetup, setIsSetup] = useState(false);
             const [messages, setMessages] = useState([]);
             const [tasks, setTasks] = useState([]);
+            const [completedTasks, setCompletedTasks] = useState([]);
             const [currentMode, setCurrentMode] = useState('coach');
             const [inputMessage, setInputMessage] = useState('');
             const [isLoading, setIsLoading] = useState(false);
             const [dailyEnergy, setDailyEnergy] = useState(null);
+            const [showCompleteModal, setShowCompleteModal] = useState(false);
+            const [taskToComplete, setTaskToComplete] = useState(null);
             const chatEndRef = useRef(null);
 
             // Load from localStorage on mount
@@ -360,6 +363,7 @@
                 const savedTasks = localStorage.getItem('calmCommanderTasks');
                 const savedMode = localStorage.getItem('calmCommanderMode');
                 const savedEnergy = localStorage.getItem('ccDailyEnergy');
+                const savedCompleted = localStorage.getItem('ccCompletedTasks');
 
                 if (savedKey) {
                     setApiKey(savedKey);
@@ -391,6 +395,16 @@
                     // Check if it's today's energy
                     if (energy.date === new Date().toDateString()) {
                         setDailyEnergy(energy);
+                    }
+                }
+                if (savedCompleted) {
+                    try {
+                        const parsed = JSON.parse(savedCompleted);
+                        if (Array.isArray(parsed)) {
+                            setCompletedTasks(parsed);
+                        }
+                    } catch (e) {
+                        setCompletedTasks([]);
                     }
                 }
 
@@ -445,6 +459,33 @@
                 const updatedTasks = tasks.filter(t => t.id !== taskId);
                 setTasks(updatedTasks);
                 localStorage.setItem('calmCommanderTasks', JSON.stringify(updatedTasks));
+            };
+
+            const completeTask = (taskId, actualTime) => {
+                const task = tasks.find(t => t.id === taskId);
+                if (!task) return;
+
+                // Create completed task with time data
+                const completedTask = {
+                    ...task,
+                    status: 'completed',
+                    completedDate: Date.now(),
+                    actualTime: actualTime
+                };
+
+                // Remove from active tasks
+                const updatedTasks = tasks.filter(t => t.id !== taskId);
+                setTasks(updatedTasks);
+                localStorage.setItem('calmCommanderTasks', JSON.stringify(updatedTasks));
+
+                // Add to completed tasks
+                const updatedCompleted = [...completedTasks, completedTask];
+                setCompletedTasks(updatedCompleted);
+                localStorage.setItem('ccCompletedTasks', JSON.stringify(updatedCompleted));
+
+                // Close modal
+                setShowCompleteModal(false);
+                setTaskToComplete(null);
             };
 
             const setEnergy = (level) => {
@@ -887,20 +928,39 @@
                                                                 {task.energyRequired || 'medium'} energy
                                                             </span>
                                                         </div>
-                                                        <button
-                                                            onClick={() => deleteTask(task.id)}
-                                                            style={{
-                                                                background: '#ef4444',
-                                                                color: 'white',
-                                                                border: 'none',
-                                                                padding: '4px 8px',
-                                                                borderRadius: '4px',
-                                                                cursor: 'pointer',
-                                                                fontSize: '12px'
-                                                            }}
-                                                        >
-                                                            Delete
-                                                        </button>
+                                                        <div style={{display: 'flex', gap: '8px'}}>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setTaskToComplete(task);
+                                                                    setShowCompleteModal(true);
+                                                                }}
+                                                                style={{
+                                                                    background: '#22c55e',
+                                                                    color: 'white',
+                                                                    border: 'none',
+                                                                    padding: '4px 8px',
+                                                                    borderRadius: '4px',
+                                                                    cursor: 'pointer',
+                                                                    fontSize: '12px'
+                                                                }}
+                                                            >
+                                                                Complete
+                                                            </button>
+                                                            <button
+                                                                onClick={() => deleteTask(task.id)}
+                                                                style={{
+                                                                    background: '#ef4444',
+                                                                    color: 'white',
+                                                                    border: 'none',
+                                                                    padding: '4px 8px',
+                                                                    borderRadius: '4px',
+                                                                    cursor: 'pointer',
+                                                                    fontSize: '12px'
+                                                                }}
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        </div>
                                                     </li>
                                                 ))}
                                             </ul>
@@ -909,6 +969,126 @@
                                 </div>
                             );
                         })()}
+
+                        {/* Complete Task Modal */}
+                        {showCompleteModal && taskToComplete && (
+                            <div style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: 'rgba(0, 0, 0, 0.5)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 1000
+                            }} onClick={() => setShowCompleteModal(false)}>
+                                <div style={{
+                                    background: 'white',
+                                    borderRadius: '16px',
+                                    padding: '30px',
+                                    maxWidth: '500px',
+                                    width: '90%'
+                                }} onClick={(e) => e.stopPropagation()}>
+                                    <h3 style={{marginBottom: '15px'}}>Task Complete!</h3>
+                                    <p style={{marginBottom: '15px'}}><strong>{taskToComplete.title}</strong></p>
+                                    <div>
+                                        <label style={{display: 'block', marginBottom: '10px', fontWeight: 600}}>How long did this actually take?</label>
+                                        <div style={{display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
+                                            <button
+                                                onClick={() => completeTask(taskToComplete.id, '0.25')}
+                                                style={{
+                                                    padding: '10px 16px',
+                                                    background: '#667eea',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                15 min
+                                            </button>
+                                            <button
+                                                onClick={() => completeTask(taskToComplete.id, '0.5')}
+                                                style={{
+                                                    padding: '10px 16px',
+                                                    background: '#667eea',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                30 min
+                                            </button>
+                                            <button
+                                                onClick={() => completeTask(taskToComplete.id, '1')}
+                                                style={{
+                                                    padding: '10px 16px',
+                                                    background: '#667eea',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                1 hour
+                                            </button>
+                                            <button
+                                                onClick={() => completeTask(taskToComplete.id, '2')}
+                                                style={{
+                                                    padding: '10px 16px',
+                                                    background: '#667eea',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                2 hours
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    const time = prompt('Enter hours (e.g., 1.5):');
+                                                    if (time) completeTask(taskToComplete.id, time);
+                                                }}
+                                                style={{
+                                                    padding: '10px 16px',
+                                                    background: '#6b7280',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                Custom
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div style={{marginTop: '20px', display: 'flex', justifyContent: 'flex-end'}}>
+                                        <button
+                                            onClick={() => setShowCompleteModal(false)}
+                                            style={{
+                                                padding: '8px 16px',
+                                                background: '#6b7280',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             );
