@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calm Commander - AuDHD Edition</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: white;
+            padding: 25px 30px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .mode-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .mode-badge.coach {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .mode-badge.crisis {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .mode-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 10px 16px;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-btn.coach {
+            background: #22c55e;
+            color: white;
+        }
+
+        .mode-btn.coach:hover {
+            background: #16a34a;
+        }
+
+        .mode-btn.coach.active {
+            border-color: #065f46;
+        }
+
+        .mode-btn.crisis {
+            background: #ef4444;
+            color: white;
+        }
+
+        .mode-btn.crisis:hover {
+            background: #dc2626;
+        }
+
+        .mode-btn.crisis.active {
+            border-color: #991b1b;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .setup-screen {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .setup-screen h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .setup-screen p {
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .info-box {
+            background: #f0f9ff;
+            border: 2px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #1e40af;
+            font-size: 14px;
+        }
+
+        .input-group {
+            margin: 20px 0;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .chat-container {
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 20px;
+            height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            line-height: 1.5;
+        }
+
+        .message.user {
+            background: #e0e7ff;
+            color: #1e1b4b;
+            margin-left: 20px;
+        }
+
+        .message.assistant {
+            background: white;
+            color: #333;
+            margin-right: 20px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .message.system {
+            background: #fef3c7;
+            color: #78350f;
+            text-align: center;
+            font-style: italic;
+            margin: 10px 40px;
+        }
+
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-area input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+
+        .input-area input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .input-area button {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .input-area button:hover {
+            background: #5568d3;
+        }
+
+        .input-area button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .tasks-section {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid #f0f0f0;
+        }
+
+        .tasks-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .task-category {
+            margin-bottom: 20px;
+        }
+
+        .task-category h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .task-list {
+            list-style: none;
+        }
+
+        .task-item {
+            padding: 10px 12px;
+            margin-bottom: 6px;
+            background: #f9fafb;
+            border-left: 4px solid;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .task-item.now {
+            border-left-color: #22c55e;
+        }
+
+        .task-item.soon {
+            border-left-color: #fbbf24;
+        }
+
+        .task-item.later {
+            border-left-color: #94a3b8;
+        }
+
+        .empty-state {
+            color: #9ca3af;
+            font-style: italic;
+            padding: 10px 12px;
+            font-size: 14px;
+        }
+
+        @media (max-width: 700px) {
+            body {
+                padding: 10px;
+            }
+
+            .header, .content {
+                padding: 20px;
+            }
+
+            .chat-container {
+                height: 300px;
+            }
+
+            .message.user {
+                margin-left: 10px;
+            }
+
+            .message.assistant {
+                margin-right: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Crisis keywords for auto-detection
+        const CRISIS_KEYWORDS = [
+            "overwhelmed", "frozen", "shutdown", "too much", "crisis",
+            "can't do this", "help", "drowning", "stuck"
+        ];
+
+        function App() {
+            const [apiKey, setApiKey] = useState('');
+            const [isSetup, setIsSetup] = useState(false);
+            const [messages, setMessages] = useState([]);
+            const [tasks, setTasks] = useState({ now: [], soon: [], later: [] });
+            const [currentMode, setCurrentMode] = useState('coach');
+            const [inputMessage, setInputMessage] = useState('');
+            const [isLoading, setIsLoading] = useState(false);
+            const chatEndRef = useRef(null);
+
+            // Load from localStorage on mount
+            useEffect(() => {
+                const savedKey = localStorage.getItem('calmCommanderApiKey');
+                const savedMessages = localStorage.getItem('calmCommanderMessages');
+                const savedTasks = localStorage.getItem('calmCommanderTasks');
+                const savedMode = localStorage.getItem('calmCommanderMode');
+
+                if (savedKey) {
+                    setApiKey(savedKey);
+                    setIsSetup(true);
+                }
+                if (savedMessages) {
+                    setMessages(JSON.parse(savedMessages));
+                }
+                if (savedTasks) {
+                    setTasks(JSON.parse(savedTasks));
+                }
+                if (savedMode) {
+                    setCurrentMode(savedMode);
+                }
+
+                // Add welcome message if first time
+                if (!savedMessages && savedKey) {
+                    const welcomeMsg = {
+                        role: 'assistant',
+                        content: "Hi there. I'm here to help you feel calmer and more clear. Let's take this one step at a time. What's on your mind right now?"
+                    };
+                    setMessages([welcomeMsg]);
+                    localStorage.setItem('calmCommanderMessages', JSON.stringify([welcomeMsg]));
+                }
+            }, []);
+
+            // Auto-scroll chat
+            useEffect(() => {
+                chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, [messages]);
+
+            const handleSetup = () => {
+                if (apiKey.trim()) {
+                    localStorage.setItem('calmCommanderApiKey', apiKey);
+                    setIsSetup(true);
+
+                    const welcomeMsg = {
+                        role: 'assistant',
+                        content: "Hi there. I'm here to help you feel calmer and more clear. Let's take this one step at a time. What's on your mind right now?"
+                    };
+                    setMessages([welcomeMsg]);
+                    localStorage.setItem('calmCommanderMessages', JSON.stringify([welcomeMsg]));
+                }
+            };
+
+            const detectCrisisMode = (text) => {
+                const lowerText = text.toLowerCase();
+                return CRISIS_KEYWORDS.some(keyword => lowerText.includes(keyword));
+            };
+
+            const parseTasks = (responseText) => {
+                const newTasks = { now: [], soon: [], later: [] };
+                const lines = responseText.split('\n');
+
+                lines.forEach(line => {
+                    const trimmed = line.trim();
+                    if (!trimmed) return;
+
+                    // Check for Now tasks
+                    if (trimmed.startsWith('✅') || trimmed.toLowerCase().includes('now:') || trimmed.toLowerCase().includes('do now:')) {
+                        const task = trimmed.replace(/^✅\s*/, '').replace(/now:/i, '').replace(/do now:/i, '').trim();
+                        if (task) newTasks.now.push(task);
+                    }
+                    // Check for Soon tasks
+                    else if (trimmed.startsWith('⏳') || trimmed.toLowerCase().includes('soon:') || trimmed.toLowerCase().includes('delay:')) {
+                        const task = trimmed.replace(/^⏳\s*/, '').replace(/soon:/i, '').replace(/delay:/i, '').trim();
+                        if (task) newTasks.soon.push(task);
+                    }
+                    // Check for Later tasks
+                    else if (trimmed.startsWith('📅') || trimmed.toLowerCase().includes('later:') || trimmed.toLowerCase().includes('ask for help:')) {
+                        const task = trimmed.replace(/^📅\s*/, '').replace(/^💬\s*/, '').replace(/later:/i, '').replace(/ask for help:/i, '').trim();
+                        if (task) newTasks.later.push(task);
+                    }
+                });
+
+                // Only update if we found new tasks
+                if (newTasks.now.length > 0 || newTasks.soon.length > 0 || newTasks.later.length > 0) {
+                    setTasks(prev => ({
+                        now: [...prev.now, ...newTasks.now],
+                        soon: [...prev.soon, ...newTasks.soon],
+                        later: [...prev.later, ...newTasks.later]
+                    }));
+                    localStorage.setItem('calmCommanderTasks', JSON.stringify({
+                        now: [...tasks.now, ...newTasks.now],
+                        soon: [...tasks.soon, ...newTasks.soon],
+                        later: [...tasks.later, ...newTasks.later]
+                    }));
+                }
+            };
+
+            const switchMode = (newMode, isAuto = false) => {
+                if (newMode !== currentMode) {
+                    setCurrentMode(newMode);
+                    localStorage.setItem('calmCommanderMode', newMode);
+
+                    const modeMsg = {
+                        role: 'system',
+                        content: isAuto
+                            ? `Switching to ${newMode} mode. I'm here...`
+                            : `Switched to ${newMode} mode.`
+                    };
+                    const updatedMessages = [...messages, modeMsg];
+                    setMessages(updatedMessages);
+                    localStorage.setItem('calmCommanderMessages', JSON.stringify(updatedMessages));
+                }
+            };
+
+            const sendMessage = async () => {
+                if (!inputMessage.trim() || isLoading) return;
+
+                const userMsg = { role: 'user', content: inputMessage };
+                const updatedMessages = [...messages, userMsg];
+                setMessages(updatedMessages);
+                localStorage.setItem('calmCommanderMessages', JSON.stringify(updatedMessages));
+
+                // Check for manual mode switch requests
+                const lowerInput = inputMessage.toLowerCase();
+                if (lowerInput.includes('back to normal mode') || lowerInput.includes('coach mode')) {
+                    switchMode('coach');
+                } else if (detectCrisisMode(inputMessage)) {
+                    switchMode('crisis', true);
+                }
+
+                setInputMessage('');
+                setIsLoading(true);
+
+                try {
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            message: inputMessage,
+                            mode: currentMode,
+                            apiKey: apiKey
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        const assistantMsg = { role: 'assistant', content: data.response };
+                        const finalMessages = [...updatedMessages, assistantMsg];
+                        setMessages(finalMessages);
+                        localStorage.setItem('calmCommanderMessages', JSON.stringify(finalMessages));
+
+                        // Parse tasks from response
+                        parseTasks(data.response);
+                    } else {
+                        const errorMsg = {
+                            role: 'system',
+                            content: `Error: ${data.error || 'Failed to get response'}`
+                        };
+                        const finalMessages = [...updatedMessages, errorMsg];
+                        setMessages(finalMessages);
+                        localStorage.setItem('calmCommanderMessages', JSON.stringify(finalMessages));
+                    }
+                } catch (error) {
+                    const errorMsg = {
+                        role: 'system',
+                        content: 'Connection error. Please check your internet and try again.'
+                    };
+                    const finalMessages = [...updatedMessages, errorMsg];
+                    setMessages(finalMessages);
+                    localStorage.setItem('calmCommanderMessages', JSON.stringify(finalMessages));
+                }
+
+                setIsLoading(false);
+            };
+
+            const handleKeyPress = (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            };
+
+            if (!isSetup) {
+                return (
+                    <div className="container">
+                        <div className="header">
+                            <h1>Calm Commander</h1>
+                        </div>
+                        <div className="content">
+                            <div className="setup-screen">
+                                <h2>Welcome to Calm Commander</h2>
+                                <p>An AI coach designed specifically for people with ADHD and autism.</p>
+
+                                <div className="info-box">
+                                    Get your API key at console.anthropic.com. It stays private on your device.
+                                </div>
+
+                                <div className="input-group">
+                                    <label htmlFor="apiKey">Anthropic API Key</label>
+                                    <input
+                                        id="apiKey"
+                                        type="password"
+                                        value={apiKey}
+                                        onChange={(e) => setApiKey(e.target.value)}
+                                        placeholder="sk-ant-..."
+                                        onKeyPress={(e) => e.key === 'Enter' && handleSetup()}
+                                    />
+                                </div>
+
+                                <button className="btn-primary" onClick={handleSetup}>
+                                    Start Using Calm Commander
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="container">
+                    <div className="header">
+                        <h1>Calm Commander</h1>
+                        <div className={`mode-badge ${currentMode}`}>
+                            {currentMode === 'coach' ? '🧘 Coach Mode' : '🚨 Crisis Mode'}
+                        </div>
+                        <div className="mode-buttons">
+                            <button
+                                className={`mode-btn coach ${currentMode === 'coach' ? 'active' : ''}`}
+                                onClick={() => switchMode('coach')}
+                            >
+                                Coach Mode
+                            </button>
+                            <button
+                                className={`mode-btn crisis ${currentMode === 'crisis' ? 'active' : ''}`}
+                                onClick={() => switchMode('crisis')}
+                            >
+                                Crisis Mode
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="content">
+                        <div className="chat-container">
+                            {messages.map((msg, index) => (
+                                <div key={index} className={`message ${msg.role}`}>
+                                    {msg.content}
+                                </div>
+                            ))}
+                            {isLoading && (
+                                <div className="message assistant">
+                                    Thinking...
+                                </div>
+                            )}
+                            <div ref={chatEndRef} />
+                        </div>
+
+                        <div className="input-area">
+                            <input
+                                type="text"
+                                value={inputMessage}
+                                onChange={(e) => setInputMessage(e.target.value)}
+                                onKeyPress={handleKeyPress}
+                                placeholder="What's on your mind?"
+                                disabled={isLoading}
+                            />
+                            <button onClick={sendMessage} disabled={isLoading || !inputMessage.trim()}>
+                                Send
+                            </button>
+                        </div>
+
+                        {(tasks.now.length > 0 || tasks.soon.length > 0 || tasks.later.length > 0) && (
+                            <div className="tasks-section">
+                                <h3>Your Tasks</h3>
+
+                                <div className="task-category">
+                                    <h4 style={{color: '#22c55e'}}>Now</h4>
+                                    {tasks.now.length > 0 ? (
+                                        <ul className="task-list">
+                                            {tasks.now.map((task, i) => (
+                                                <li key={i} className="task-item now">{task}</li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        <div className="empty-state">No urgent tasks</div>
+                                    )}
+                                </div>
+
+                                <div className="task-category">
+                                    <h4 style={{color: '#fbbf24'}}>Soon</h4>
+                                    {tasks.soon.length > 0 ? (
+                                        <ul className="task-list">
+                                            {tasks.soon.map((task, i) => (
+                                                <li key={i} className="task-item soon">{task}</li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        <div className="empty-state">Nothing scheduled soon</div>
+                                    )}
+                                </div>
+
+                                <div className="task-category">
+                                    <h4 style={{color: '#94a3b8'}}>Later</h4>
+                                    {tasks.later.length > 0 ? (
+                                        <ul className="task-list">
+                                            {tasks.later.map((task, i) => (
+                                                <li key={i} className="task-item later">{task}</li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        <div className="empty-state">No future tasks</div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
