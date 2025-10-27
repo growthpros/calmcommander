@@ -369,7 +369,19 @@
                     setMessages(JSON.parse(savedMessages));
                 }
                 if (savedTasks) {
-                    setTasks(JSON.parse(savedTasks));
+                    try {
+                        const parsed = JSON.parse(savedTasks);
+                        // Ensure it's an array
+                        if (Array.isArray(parsed)) {
+                            setTasks(parsed);
+                        } else {
+                            setTasks([]);
+                            localStorage.removeItem('calmCommanderTasks');
+                        }
+                    } catch (e) {
+                        setTasks([]);
+                        localStorage.removeItem('calmCommanderTasks');
+                    }
                 }
                 if (savedMode) {
                     setCurrentMode(savedMode);
@@ -421,7 +433,9 @@
                     status: 'active',
                     createdDate: Date.now()
                 };
-                const updatedTasks = [...tasks, newTask];
+                // Ensure tasks is always an array
+                const currentTasks = Array.isArray(tasks) ? tasks : [];
+                const updatedTasks = [...currentTasks, newTask];
                 setTasks(updatedTasks);
                 localStorage.setItem('calmCommanderTasks', JSON.stringify(updatedTasks));
             };
