@@ -425,11 +425,12 @@
             };
 
             // Task management functions
-            const addTask = (title, category = 'Uncategorized') => {
+            const addTask = (title, category = 'Uncategorized', energyRequired = 'medium') => {
                 const newTask = {
                     id: Date.now(),
                     title: title,
                     category: category,
+                    energyRequired: energyRequired,
                     status: 'active',
                     createdDate: Date.now()
                 };
@@ -728,19 +729,75 @@
                             )}
                         </div>
 
-                        {/* Quick Add Task Button */}
-                        <button
-                            className="btn-primary"
-                            style={{marginBottom: '20px', width: '100%'}}
-                            onClick={() => {
-                                const taskTitle = prompt('What task do you want to add?');
-                                if (taskTitle && taskTitle.trim()) {
-                                    addTask(taskTitle.trim());
-                                }
-                            }}
-                        >
-                            + Quick Add Task
-                        </button>
+                        {/* Quick Add Task Buttons */}
+                        <div style={{marginBottom: '20px'}}>
+                            <h4 style={{fontSize: '14px', marginBottom: '10px', color: '#333'}}>Add Task:</h4>
+                            <div style={{display: 'flex', gap: '10px'}}>
+                                <button
+                                    style={{
+                                        flex: 1,
+                                        padding: '10px',
+                                        background: '#fee2e2',
+                                        color: '#991b1b',
+                                        border: '2px solid #ef4444',
+                                        borderRadius: '8px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        fontSize: '13px'
+                                    }}
+                                    onClick={() => {
+                                        const taskTitle = prompt('Add low energy task:');
+                                        if (taskTitle && taskTitle.trim()) {
+                                            addTask(taskTitle.trim(), 'Uncategorized', 'low');
+                                        }
+                                    }}
+                                >
+                                    + Low Energy
+                                </button>
+                                <button
+                                    style={{
+                                        flex: 1,
+                                        padding: '10px',
+                                        background: '#fef3c7',
+                                        color: '#92400e',
+                                        border: '2px solid #f59e0b',
+                                        borderRadius: '8px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        fontSize: '13px'
+                                    }}
+                                    onClick={() => {
+                                        const taskTitle = prompt('Add medium energy task:');
+                                        if (taskTitle && taskTitle.trim()) {
+                                            addTask(taskTitle.trim(), 'Uncategorized', 'medium');
+                                        }
+                                    }}
+                                >
+                                    + Medium Energy
+                                </button>
+                                <button
+                                    style={{
+                                        flex: 1,
+                                        padding: '10px',
+                                        background: '#d1fae5',
+                                        color: '#065f46',
+                                        border: '2px solid #22c55e',
+                                        borderRadius: '8px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        fontSize: '13px'
+                                    }}
+                                    onClick={() => {
+                                        const taskTitle = prompt('Add high energy task:');
+                                        if (taskTitle && taskTitle.trim()) {
+                                            addTask(taskTitle.trim(), 'Uncategorized', 'high');
+                                        }
+                                    }}
+                                >
+                                    + High Energy
+                                </button>
+                            </div>
+                        </div>
 
                         <div className="chat-container">
                             {messages.map((msg, index) => (
@@ -771,45 +828,87 @@
                         </div>
 
                         {/* Master Task List */}
-                        {tasks.length > 0 && (
-                            <div className="tasks-section">
-                                <h3>Master Task List ({tasks.length} tasks)</h3>
+                        {tasks.length > 0 && (() => {
+                            // Energy-based filtering logic
+                            const filterTasksByEnergy = (taskList) => {
+                                if (!dailyEnergy) return taskList; // No energy set, show all
 
-                                {Object.entries(
-                                    tasks.reduce((acc, task) => {
-                                        const cat = task.category || 'Uncategorized';
-                                        if (!acc[cat]) acc[cat] = [];
-                                        acc[cat].push(task);
-                                        return acc;
-                                    }, {})
-                                ).map(([category, categoryTasks]) => (
-                                    <div key={category} className="task-category">
-                                        <h4>{category} ({categoryTasks.length})</h4>
-                                        <ul className="task-list">
-                                            {categoryTasks.map((task) => (
-                                                <li key={task.id} className="task-item now" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                                                    <span>{task.title}</span>
-                                                    <button
-                                                        onClick={() => deleteTask(task.id)}
-                                                        style={{
-                                                            background: '#ef4444',
-                                                            color: 'white',
-                                                            border: 'none',
-                                                            padding: '4px 8px',
-                                                            borderRadius: '4px',
-                                                            cursor: 'pointer',
-                                                            fontSize: '12px'
-                                                        }}
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                                const energyLevels = { low: 1, medium: 2, high: 3 };
+                                const userEnergyLevel = energyLevels[dailyEnergy.level];
+
+                                return taskList.filter(task => {
+                                    const taskEnergyLevel = energyLevels[task.energyRequired || 'medium'];
+                                    return taskEnergyLevel <= userEnergyLevel;
+                                });
+                            };
+
+                            const filteredTasks = filterTasksByEnergy(tasks);
+                            const hiddenCount = tasks.length - filteredTasks.length;
+
+                            return (
+                                <div className="tasks-section">
+                                    <h3>Master Task List ({filteredTasks.length} tasks {dailyEnergy && `for ${dailyEnergy.level} energy`})</h3>
+                                    {hiddenCount > 0 && dailyEnergy && (
+                                        <div style={{
+                                            background: '#fef3c7',
+                                            padding: '10px',
+                                            borderRadius: '6px',
+                                            marginBottom: '15px',
+                                            fontSize: '14px',
+                                            color: '#78350f'
+                                        }}>
+                                            {hiddenCount} task{hiddenCount > 1 ? 's' : ''} hidden (requires more energy than you have today)
+                                        </div>
+                                    )}
+
+                                    {Object.entries(
+                                        filteredTasks.reduce((acc, task) => {
+                                            const cat = task.category || 'Uncategorized';
+                                            if (!acc[cat]) acc[cat] = [];
+                                            acc[cat].push(task);
+                                            return acc;
+                                        }, {})
+                                    ).map(([category, categoryTasks]) => (
+                                        <div key={category} className="task-category">
+                                            <h4>{category} ({categoryTasks.length})</h4>
+                                            <ul className="task-list">
+                                                {categoryTasks.map((task) => (
+                                                    <li key={task.id} className="task-item now" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                                        <div style={{flex: 1}}>
+                                                            <span>{task.title}</span>
+                                                            <span style={{
+                                                                marginLeft: '10px',
+                                                                fontSize: '11px',
+                                                                padding: '2px 6px',
+                                                                borderRadius: '4px',
+                                                                background: task.energyRequired === 'low' ? '#fee2e2' : task.energyRequired === 'high' ? '#d1fae5' : '#fef3c7',
+                                                                color: task.energyRequired === 'low' ? '#991b1b' : task.energyRequired === 'high' ? '#065f46' : '#92400e'
+                                                            }}>
+                                                                {task.energyRequired || 'medium'} energy
+                                                            </span>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => deleteTask(task.id)}
+                                                            style={{
+                                                                background: '#ef4444',
+                                                                color: 'white',
+                                                                border: 'none',
+                                                                padding: '4px 8px',
+                                                                borderRadius: '4px',
+                                                                cursor: 'pointer',
+                                                                fontSize: '12px'
+                                                            }}
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
             );
