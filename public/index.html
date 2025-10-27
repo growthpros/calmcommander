@@ -350,6 +350,7 @@
             const [currentMode, setCurrentMode] = useState('coach');
             const [inputMessage, setInputMessage] = useState('');
             const [isLoading, setIsLoading] = useState(false);
+            const [dailyEnergy, setDailyEnergy] = useState(null);
             const chatEndRef = useRef(null);
 
             // Load from localStorage on mount
@@ -358,6 +359,7 @@
                 const savedMessages = localStorage.getItem('calmCommanderMessages');
                 const savedTasks = localStorage.getItem('calmCommanderTasks');
                 const savedMode = localStorage.getItem('calmCommanderMode');
+                const savedEnergy = localStorage.getItem('ccDailyEnergy');
 
                 if (savedKey) {
                     setApiKey(savedKey);
@@ -371,6 +373,13 @@
                 }
                 if (savedMode) {
                     setCurrentMode(savedMode);
+                }
+                if (savedEnergy) {
+                    const energy = JSON.parse(savedEnergy);
+                    // Check if it's today's energy
+                    if (energy.date === new Date().toDateString()) {
+                        setDailyEnergy(energy);
+                    }
                 }
 
                 // Add welcome message if first time
@@ -421,6 +430,16 @@
                 const updatedTasks = tasks.filter(t => t.id !== taskId);
                 setTasks(updatedTasks);
                 localStorage.setItem('calmCommanderTasks', JSON.stringify(updatedTasks));
+            };
+
+            const setEnergy = (level) => {
+                const energy = {
+                    date: new Date().toDateString(),
+                    level: level,
+                    timestamp: Date.now()
+                };
+                setDailyEnergy(energy);
+                localStorage.setItem('ccDailyEnergy', JSON.stringify(energy));
             };
 
             const detectCrisisMode = (text) => {
@@ -610,6 +629,91 @@
                     </div>
 
                     <div className="content">
+                        {/* Energy Check-in Panel */}
+                        <div style={{
+                            background: '#f9fafb',
+                            border: '2px solid #e5e7eb',
+                            borderRadius: '8px',
+                            padding: '20px',
+                            marginBottom: '20px'
+                        }}>
+                            {!dailyEnergy ? (
+                                <div>
+                                    <h3 style={{fontSize: '16px', marginBottom: '12px', color: '#333'}}>
+                                        What's your energy level today?
+                                    </h3>
+                                    <div style={{display: 'flex', gap: '10px'}}>
+                                        <button
+                                            onClick={() => setEnergy('low')}
+                                            style={{
+                                                flex: 1,
+                                                padding: '10px',
+                                                border: '2px solid #e5e7eb',
+                                                borderRadius: '8px',
+                                                background: 'white',
+                                                cursor: 'pointer',
+                                                fontWeight: 600
+                                            }}
+                                        >
+                                            Low
+                                        </button>
+                                        <button
+                                            onClick={() => setEnergy('medium')}
+                                            style={{
+                                                flex: 1,
+                                                padding: '10px',
+                                                border: '2px solid #e5e7eb',
+                                                borderRadius: '8px',
+                                                background: 'white',
+                                                cursor: 'pointer',
+                                                fontWeight: 600
+                                            }}
+                                        >
+                                            Medium
+                                        </button>
+                                        <button
+                                            onClick={() => setEnergy('high')}
+                                            style={{
+                                                flex: 1,
+                                                padding: '10px',
+                                                border: '2px solid #e5e7eb',
+                                                borderRadius: '8px',
+                                                background: 'white',
+                                                cursor: 'pointer',
+                                                fontWeight: 600
+                                            }}
+                                        >
+                                            High
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div>
+                                    <h3 style={{fontSize: '16px', marginBottom: '12px', color: '#333'}}>
+                                        Today's Energy: <span style={{textTransform: 'capitalize', fontWeight: 'bold'}}>{dailyEnergy.level}</span>
+                                    </h3>
+                                    <button
+                                        onClick={() => {
+                                            setDailyEnergy(null);
+                                            localStorage.removeItem('ccDailyEnergy');
+                                        }}
+                                        style={{
+                                            padding: '8px 16px',
+                                            background: '#6b7280',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '6px',
+                                            cursor: 'pointer',
+                                            fontSize: '14px',
+                                            fontWeight: 600
+                                        }}
+                                    >
+                                        Update Energy
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
                         {/* Quick Add Task Button */}
                         <button
                             className="btn-primary"
