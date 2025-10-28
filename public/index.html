@@ -382,6 +382,7 @@
                 const savedMode = localStorage.getItem('calmCommanderMode');
                 const savedEnergy = localStorage.getItem('ccDailyEnergy');
                 const savedCompleted = localStorage.getItem('ccCompletedTasks');
+                const savedCalendar = localStorage.getItem('ccCalendarInput');
 
                 if (savedKey) {
                     setApiKey(savedKey);
@@ -425,6 +426,13 @@
                         setCompletedTasks([]);
                     }
                 }
+                if (savedCalendar) {
+                    const calendar = JSON.parse(savedCalendar);
+                    // Check if it's today's calendar
+                    if (calendar.date === new Date().toDateString()) {
+                        setCalendarInput(calendar.input);
+                    }
+                }
 
                 // Add welcome message if first time
                 if (!savedMessages && savedKey) {
@@ -441,6 +449,17 @@
             useEffect(() => {
                 chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
             }, [messages]);
+
+            // Save calendar input to localStorage when it changes
+            useEffect(() => {
+                if (calendarInput !== '') {
+                    const calendar = {
+                        date: new Date().toDateString(),
+                        input: calendarInput
+                    };
+                    localStorage.setItem('ccCalendarInput', JSON.stringify(calendar));
+                }
+            }, [calendarInput]);
 
             const handleSetup = () => {
                 if (apiKey.trim()) {
