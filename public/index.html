@@ -2115,33 +2115,49 @@ Format your response as a simple numbered list, one step per line.`;
                                                                     </div>
                                                                 </div>
                                                                 <div style={{padding: '15px'}}>
-                                                                    {client.tasks.map(task => (
-                                                                        <div key={task.id} style={{
-                                                                            marginBottom: '8px',
-                                                                            paddingBottom: '8px',
-                                                                            borderBottom: '1px solid #f3f4f6',
-                                                                            fontSize: '14px'
-                                                                        }}>
-                                                                            <div style={{display: 'flex', justifyContent: 'space-between'}}>
-                                                                                <span>{task.title}</span>
-                                                                                <span style={{fontWeight: 600}}>
-                                                                                    {parseFloat(task.actualTime).toFixed(2)}h
-                                                                                </span>
-                                                                            </div>
-                                                                            {task.billable && (
-                                                                                <span style={{
-                                                                                    fontSize: '11px',
-                                                                                    padding: '2px 6px',
-                                                                                    borderRadius: '4px',
-                                                                                    background: '#d1fae5',
-                                                                                    color: '#065f46',
-                                                                                    fontWeight: 600
-                                                                                }}>
+                                                                    {client.tasks.map(task => {
+                                                                        const completedDate = new Date(task.completedDate);
+                                                                        const dateStr = completedDate.toLocaleDateString('en-US', {
+                                                                            month: 'short',
+                                                                            day: 'numeric'
+                                                                        });
+                                                                        return (
+                                                                            <div key={task.id} style={{
+                                                                                marginBottom: '8px',
+                                                                                paddingBottom: '8px',
+                                                                                borderBottom: '1px solid #f3f4f6',
+                                                                                fontSize: '14px'
+                                                                            }}>
+                                                                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+                                                                                    <div style={{flex: 1}}>
+                                                                                        <span>{task.title}</span>
+                                                                                        <div style={{
+                                                                                            fontSize: '12px',
+                                                                                            color: '#6b7280',
+                                                                                            marginTop: '2px'
+                                                                                        }}>
+                                                                                            {dateStr}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <span style={{fontWeight: 600, marginLeft: '12px'}}>
+                                                                                        {parseFloat(task.actualTime).toFixed(2)}h
+                                                                                    </span>
+                                                                                </div>
+                                                                                {task.billable && (
+                                                                                    <span style={{
+                                                                                        fontSize: '11px',
+                                                                                        padding: '2px 6px',
+                                                                                        borderRadius: '4px',
+                                                                                        background: '#d1fae5',
+                                                                                        color: '#065f46',
+                                                                                        fontWeight: 600
+                                                                                    }}>
                                                                                     $ Billable
                                                                                 </span>
                                                                             )}
                                                                         </div>
-                                                                    ))}
+                                                                        );
+                                                                    })}
                                                                 </div>
                                                             </div>
                                                         );
