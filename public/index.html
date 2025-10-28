@@ -684,6 +684,55 @@ Format your response as a simple numbered list, one step per line.`;
                 return CRISIS_KEYWORDS.some(keyword => lowerText.includes(keyword));
             };
 
+            const parseCalendarInput = (input) => {
+                if (!input || !input.trim()) return 0;
+
+                let totalBusyHours = 0;
+                const text = input.toLowerCase();
+
+                // Match explicit hours like "3 hours", "3 hrs", "3h"
+                const explicitHoursMatch = text.match(/(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\s+(?:in|of|for)?\s*(?:meetings?|calls?)?/gi);
+                if (explicitHoursMatch) {
+                    explicitHoursMatch.forEach(match => {
+                        const hours = parseFloat(match.match(/(\d+(?:\.\d+)?)/)[1]);
+                        totalBusyHours += hours;
+                    });
+                }
+
+                // Match time ranges like "2-3pm", "9:30-11am", "2pm-4pm"
+                const timeRangeRegex = /(\d{1,2})(?::(\d{2}))?\s*(?:am|pm)?\s*[-–]\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)/gi;
+                const timeRanges = text.matchAll(timeRangeRegex);
+
+                for (const match of timeRanges) {
+                    let startHour = parseInt(match[1]);
+                    const startMin = match[2] ? parseInt(match[2]) : 0;
+                    let endHour = parseInt(match[3]);
+                    const endMin = match[4] ? parseInt(match[4]) : 0;
+                    const period = match[5];
+
+                    // Convert to 24-hour format
+                    if (period === 'pm' && endHour !== 12) endHour += 12;
+                    if (period === 'am' && endHour === 12) endHour = 0;
+                    if (period === 'pm' && startHour < 12 && startHour < endHour - 12) startHour += 12;
+                    if (period === 'am' && startHour === 12) startHour = 0;
+
+                    const durationHours = (endHour + endMin / 60) - (startHour + startMin / 60);
+                    if (durationHours > 0 && durationHours < 12) {
+                        totalBusyHours += durationHours;
+                    }
+                }
+
+                // Match individual hour mentions like "2pm", "3:30pm" (count as 1 hour each)
+                if (totalBusyHours === 0) {
+                    const singleTimes = text.match(/(?:^|[,;])\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)/gi);
+                    if (singleTimes) {
+                        totalBusyHours = singleTimes.length * 1; // Assume 1 hour per meeting mentioned
+                    }
+                }
+
+                return Math.min(totalBusyHours, 16); // Cap at 16 hours to avoid nonsense
+            };
+
             const parseTasks = (responseText) => {
                 // Simple task parsing for Step 1
                 // Just extract tasks that AI mentions with emoji markers
@@ -1261,27 +1310,56 @@ Format your response as a simple numbered list, one step per line.`;
                                             return sum + (task.estimatedTime || 0);
                                         }, 0);
 
-                                        if (totalEstimated === 0) return null;
+                                        const busyHours = parseCalendarInput(calendarInput);
+                                        const workdayHours = 8; // Assuming 8-hour workday
+                                        const availableHours = workdayHours - busyHours;
+
+                                        if (totalEstimated === 0 && busyHours === 0) return null;
+
+                                        const isOvercommitted = totalEstimated > availableHours && availableHours > 0;
+                                        const isVeryOvercommitted = totalEstimated > workdayHours;
 
                                         return (
                                             <div style={{
-                                                background: totalEstimated > 6 ? '#fee2e2' : '#e0e7ff',
+                                                background: isVeryOvercommitted ? '#fee2e2' : isOvercommitted ? '#fef3c7' : '#e0e7ff',
                                                 padding: '15px',
                                                 borderRadius: '8px',
                                                 marginBottom: '15px',
-                                                border: `2px solid ${totalEstimated > 6 ? '#ef4444' : '#667eea'}`
+                                                border: `2px solid ${isVeryOvercommitted ? '#ef4444' : isOvercommitted ? '#f59e0b' : '#667eea'}`
                                             }}>
-                                                <div style={{fontSize: '14px', marginBottom: '5px'}}>
-                                                    <strong>Estimated time for today:</strong> {totalEstimated.toFixed(1)} hours
-                                                </div>
-                                                {totalEstimated > 6 && (
-                                                    <div style={{fontSize: '13px', color: '#991b1b', marginTop: '8px'}}>
-                                                        ⚠️ That's a lot for one day. Consider moving some tasks to "This Week" or "Later".
+                                                {busyHours > 0 && (
+                                                    <div style={{fontSize: '14px', marginBottom: '8px'}}>
+                                                        <strong>Calendar:</strong> {busyHours.toFixed(1)} hours in meetings/calls
                                                     </div>
                                                 )}
-                                                {totalEstimated > 4 && totalEstimated <= 6 && (
+                                                {busyHours > 0 && (
+                                                    <div style={{fontSize: '14px', marginBottom: '8px', color: '#059669'}}>
+                                                        <strong>Available for tasks:</strong> {availableHours.toFixed(1)} hours
+                                                    </div>
+                                                )}
+                                                {totalEstimated > 0 && (
+                                                    <div style={{fontSize: '14px', marginBottom: '5px'}}>
+                                                        <strong>Task time estimate:</strong> {totalEstimated.toFixed(1)} hours
+                                                    </div>
+                                                )}
+                                                {isVeryOvercommitted && (
+                                                    <div style={{fontSize: '13px', color: '#991b1b', marginTop: '8px'}}>
+                                                        ⚠️ <strong>Seriously overcommitted!</strong> You have {totalEstimated.toFixed(1)}h of tasks but only {availableHours > 0 ? availableHours.toFixed(1) : 0}h available. Move tasks to "This Week" or "Later".
+                                                    </div>
+                                                )}
+                                                {isOvercommitted && !isVeryOvercommitted && (
+                                                    <div style={{fontSize: '13px', color: '#92400e', marginTop: '8px'}}>
+                                                        ⚠️ You might be overcommitted - {totalEstimated.toFixed(1)}h of tasks with only {availableHours.toFixed(1)}h available.
+                                                    </div>
+                                                )}
+                                                {!isOvercommitted && totalEstimated > 4 && availableHours > 0 && (
                                                     <div style={{fontSize: '13px', color: '#3730a3', marginTop: '8px'}}>
-                                                        This is a full day. Make sure you have the energy and time for this.
+                                                        This is a full day, but manageable. You have {availableHours.toFixed(1)}h available.
+                                                    </div>
+                                                )}
+                                                {!isOvercommitted && totalEstimated <= 4 && busyHours > 0 && (
+                                                    <div style={{fontSize: '13px', color: '#059669', marginTop: '8px'}}>
+                                                        ✓ Good balance - {totalEstimated.toFixed(1)}h of tasks with {availableHours.toFixed(1)}h available.
                                                     </div>
                                                 )}
                                             </div>
