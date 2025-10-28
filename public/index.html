@@ -822,6 +822,67 @@ Format your response as a simple numbered list, one step per line.`;
                 setInputMessage('');
                 setIsLoading(true);
 
+                // Build context about current tasks and state
+                let context = '';
+
+                // Add energy level if set today
+                if (dailyEnergy && dailyEnergy.level) {
+                    context += `\n\nCurrent energy level: ${dailyEnergy.level}\n`;
+                }
+
+                // Add calendar info if entered
+                if (calendarInput && calendarInput.trim()) {
+                    const busyHours = parseCalendarInput(calendarInput);
+                    context += `\nCalendar today: ${calendarInput} (${busyHours.toFixed(1)}h in meetings/calls)\n`;
+                }
+
+                // Add active tasks grouped by view
+                const activeTasks = tasks.filter(t => !completedTasks.some(ct => ct.id === t.id));
+
+                if (activeTasks.length > 0) {
+                    context += `\n--- CURRENT TASK LIST (${activeTasks.length} tasks) ---\n`;
+
+                    const todayTasks = activeTasks.filter(t => t.view === 'today');
+                    const thisWeekTasks = activeTasks.filter(t => t.view === 'thisweek');
+                    const laterTasks = activeTasks.filter(t => t.view === 'later');
+
+                    if (todayTasks.length > 0) {
+                        context += `\nToday (${todayTasks.length}):\n`;
+                        todayTasks.forEach(t => {
+                            let taskLine = `- ${t.title}`;
+                            if (t.estimatedTime) taskLine += ` [est: ${t.estimatedTime}h]`;
+                            if (t.energyRequired) taskLine += ` (${t.energyRequired} energy)`;
+                            if (t.client) taskLine += ` [${t.client}]`;
+                            context += taskLine + '\n';
+                        });
+                    }
+
+                    if (thisWeekTasks.length > 0) {
+                        context += `\nThis Week (${thisWeekTasks.length}):\n`;
+                        thisWeekTasks.forEach(t => {
+                            let taskLine = `- ${t.title}`;
+                            if (t.estimatedTime) taskLine += ` [est: ${t.estimatedTime}h]`;
+                            if (t.energyRequired) taskLine += ` (${t.energyRequired} energy)`;
+                            if (t.client) taskLine += ` [${t.client}]`;
+                            context += taskLine + '\n';
+                        });
+                    }
+
+                    if (laterTasks.length > 0) {
+                        context += `\nLater (${laterTasks.length}):\n`;
+                        laterTasks.forEach(t => {
+                            let taskLine = `- ${t.title}`;
+                            if (t.estimatedTime) taskLine += ` [est: ${t.estimatedTime}h]`;
+                            if (t.energyRequired) taskLine += ` (${t.energyRequired} energy)`;
+                            context += taskLine + '\n';
+                        });
+                    }
+                    context += '--- END TASK LIST ---\n';
+                }
+
+                // Combine user message with context
+                const messageWithContext = inputMessage + context;
+
                 try {
                     const response = await fetch('/api/chat', {
                         method: 'POST',
@@ -829,7 +890,7 @@ Format your response as a simple numbered list, one step per line.`;
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            message: inputMessage,
+                            message: messageWithContext,
                             mode: currentMode,
                             apiKey: apiKey
                         })
