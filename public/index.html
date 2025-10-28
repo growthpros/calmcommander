@@ -366,6 +366,8 @@
             const [isBreakingDown, setIsBreakingDown] = useState(false);
             const [showBillingView, setShowBillingView] = useState(false);
             const [expandedParents, setExpandedParents] = useState({});
+            const [showEstimateModal, setShowEstimateModal] = useState(false);
+            const [pendingTask, setPendingTask] = useState(null);
             const [billingMonth, setBillingMonth] = useState(() => {
                 const now = new Date();
                 return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -455,7 +457,7 @@
             };
 
             // Task management functions
-            const addTask = (title, category = 'Uncategorized', energyRequired = 'medium', view = 'later', client = '', billable = false) => {
+            const addTask = (title, category = 'Uncategorized', energyRequired = 'medium', view = 'later', client = '', billable = false, estimatedTime = null) => {
                 const newTask = {
                     id: Date.now(),
                     title: title,
@@ -464,6 +466,7 @@
                     view: view,
                     client: client,
                     billable: billable,
+                    estimatedTime: estimatedTime,
                     status: 'active',
                     createdDate: Date.now()
                 };
@@ -639,6 +642,11 @@ Format your response as a simple numbered list, one step per line.`;
                 };
 
                 // Add each subtask with link to parent
+                // If parent has estimate, divide it among subtasks
+                const subtaskEstimate = taskToBreakdown.estimatedTime
+                    ? taskToBreakdown.estimatedTime / breakdownSubtasks.length
+                    : null;
+
                 const newSubtasks = breakdownSubtasks.map((subtaskTitle, index) => ({
                     id: Date.now() + Math.random() + index,
                     title: subtaskTitle,
@@ -647,6 +655,7 @@ Format your response as a simple numbered list, one step per line.`;
                     view: taskToBreakdown.view || 'later',
                     client: taskToBreakdown.client || '',
                     billable: taskToBreakdown.billable || false,
+                    estimatedTime: subtaskEstimate,
                     parentTaskId: taskToBreakdown.id,
                     status: 'active',
                     createdDate: Date.now()
@@ -1038,7 +1047,15 @@ Format your response as a simple numbered list, one step per line.`;
                                         if (taskTitle && taskTitle.trim()) {
                                             const client = prompt('Client name (or leave blank):') || '';
                                             const billable = client ? confirm('Is this billable work?') : false;
-                                            addTask(taskTitle.trim(), 'Uncategorized', 'low', 'later', client.trim(), billable);
+                                            setPendingTask({
+                                                title: taskTitle.trim(),
+                                                category: 'Uncategorized',
+                                                energyRequired: 'low',
+                                                view: 'later',
+                                                client: client.trim(),
+                                                billable: billable
+                                            });
+                                            setShowEstimateModal(true);
                                         }
                                     }}
                                 >
@@ -1061,7 +1078,15 @@ Format your response as a simple numbered list, one step per line.`;
                                         if (taskTitle && taskTitle.trim()) {
                                             const client = prompt('Client name (or leave blank):') || '';
                                             const billable = client ? confirm('Is this billable work?') : false;
-                                            addTask(taskTitle.trim(), 'Uncategorized', 'medium', 'later', client.trim(), billable);
+                                            setPendingTask({
+                                                title: taskTitle.trim(),
+                                                category: 'Uncategorized',
+                                                energyRequired: 'medium',
+                                                view: 'later',
+                                                client: client.trim(),
+                                                billable: billable
+                                            });
+                                            setShowEstimateModal(true);
                                         }
                                     }}
                                 >
@@ -1084,7 +1109,15 @@ Format your response as a simple numbered list, one step per line.`;
                                         if (taskTitle && taskTitle.trim()) {
                                             const client = prompt('Client name (or leave blank):') || '';
                                             const billable = client ? confirm('Is this billable work?') : false;
-                                            addTask(taskTitle.trim(), 'Uncategorized', 'high', 'later', client.trim(), billable);
+                                            setPendingTask({
+                                                title: taskTitle.trim(),
+                                                category: 'Uncategorized',
+                                                energyRequired: 'high',
+                                                view: 'later',
+                                                client: client.trim(),
+                                                billable: billable
+                                            });
+                                            setShowEstimateModal(true);
                                         }
                                     }}
                                 >
@@ -1222,6 +1255,39 @@ Format your response as a simple numbered list, one step per line.`;
                                         </div>
                                     )}
 
+                                    {/* Time Summary for Today view */}
+                                    {currentView === 'today' && (() => {
+                                        const totalEstimated = filteredTasks.reduce((sum, task) => {
+                                            return sum + (task.estimatedTime || 0);
+                                        }, 0);
+
+                                        if (totalEstimated === 0) return null;
+
+                                        return (
+                                            <div style={{
+                                                background: totalEstimated > 6 ? '#fee2e2' : '#e0e7ff',
+                                                padding: '15px',
+                                                borderRadius: '8px',
+                                                marginBottom: '15px',
+                                                border: `2px solid ${totalEstimated > 6 ? '#ef4444' : '#667eea'}`
+                                            }}>
+                                                <div style={{fontSize: '14px', marginBottom: '5px'}}>
+                                                    <strong>Estimated time for today:</strong> {totalEstimated.toFixed(1)} hours
+                                                </div>
+                                                {totalEstimated > 6 && (
+                                                    <div style={{fontSize: '13px', color: '#991b1b', marginTop: '8px'}}>
+                                                        ⚠️ That's a lot for one day. Consider moving some tasks to "This Week" or "Later".
+                                                    </div>
+                                                )}
+                                                {totalEstimated > 4 && totalEstimated <= 6 && (
+                                                    <div style={{fontSize: '13px', color: '#3730a3', marginTop: '8px'}}>
+                                                        This is a full day. Make sure you have the energy and time for this.
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
+
                                     {Object.entries(
                                         filteredTasks.reduce((acc, task) => {
                                             const cat = task.category || 'Uncategorized';
@@ -1324,6 +1390,19 @@ Format your response as a simple numbered list, one step per line.`;
                                                                     fontWeight: 700
                                                                 }}>
                                                                     $ Billable
+                                                                </span>
+                                                            )}
+                                                            {task.estimatedTime && (
+                                                                <span style={{
+                                                                    marginLeft: '6px',
+                                                                    fontSize: '11px',
+                                                                    padding: '2px 6px',
+                                                                    borderRadius: '4px',
+                                                                    background: '#fef3c7',
+                                                                    color: '#78350f',
+                                                                    fontWeight: 600
+                                                                }}>
+                                                                    ~{task.estimatedTime < 1 ? `${task.estimatedTime * 60}min` : `${task.estimatedTime}h`}
                                                                 </span>
                                                             )}
                                                         </div>
@@ -1433,6 +1512,11 @@ Format your response as a simple numbered list, one step per line.`;
                                 }} onClick={(e) => e.stopPropagation()}>
                                     <h3 style={{marginBottom: '15px'}}>Task Complete!</h3>
                                     <p style={{marginBottom: '15px'}}><strong>{taskToComplete.title}</strong></p>
+                                    {taskToComplete.estimatedTime && (
+                                        <p style={{marginBottom: '15px', fontSize: '14px', color: '#6b7280'}}>
+                                            You estimated: <strong>{taskToComplete.estimatedTime < 1 ? `${taskToComplete.estimatedTime * 60} minutes` : `${taskToComplete.estimatedTime} hour${taskToComplete.estimatedTime > 1 ? 's' : ''}`}</strong>
+                                        </p>
+                                    )}
                                     <div>
                                         <label style={{display: 'block', marginBottom: '10px', fontWeight: 600}}>How long did this actually take?</label>
                                         <div style={{display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
@@ -1524,6 +1608,155 @@ Format your response as a simple numbered list, one step per line.`;
                                             }}
                                         >
                                             Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Time Estimate Modal */}
+                        {showEstimateModal && pendingTask && (
+                            <div style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: 'rgba(0, 0, 0, 0.5)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 1000
+                            }} onClick={() => setShowEstimateModal(false)}>
+                                <div style={{
+                                    background: 'white',
+                                    borderRadius: '16px',
+                                    padding: '30px',
+                                    maxWidth: '500px',
+                                    width: '90%'
+                                }} onClick={(e) => e.stopPropagation()}>
+                                    <h3 style={{marginBottom: '15px'}}>How long will this take?</h3>
+                                    <p style={{marginBottom: '15px', fontSize: '14px', color: '#6b7280'}}>
+                                        <strong>{pendingTask.title}</strong>
+                                    </p>
+                                    <p style={{marginBottom: '15px', fontSize: '13px', color: '#6b7280'}}>
+                                        Estimating helps with planning your day. You can skip this if you're not sure.
+                                    </p>
+                                    <div>
+                                        <label style={{display: 'block', marginBottom: '10px', fontWeight: 600}}>Estimated time:</label>
+                                        <div style={{display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
+                                            <button
+                                                onClick={() => {
+                                                    addTask(pendingTask.title, pendingTask.category, pendingTask.energyRequired, pendingTask.view, pendingTask.client, pendingTask.billable, 0.25);
+                                                    setShowEstimateModal(false);
+                                                    setPendingTask(null);
+                                                }}
+                                                style={{
+                                                    padding: '10px 16px',
+                                                    background: '#667eea',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                15 min
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    addTask(pendingTask.title, pendingTask.category, pendingTask.energyRequired, pendingTask.view, pendingTask.client, pendingTask.billable, 0.5);
+                                                    setShowEstimateModal(false);
+                                                    setPendingTask(null);
+                                                }}
+                                                style={{
+                                                    padding: '10px 16px',
+                                                    background: '#667eea',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                30 min
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    addTask(pendingTask.title, pendingTask.category, pendingTask.energyRequired, pendingTask.view, pendingTask.client, pendingTask.billable, 1);
+                                                    setShowEstimateModal(false);
+                                                    setPendingTask(null);
+                                                }}
+                                                style={{
+                                                    padding: '10px 16px',
+                                                    background: '#667eea',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                1 hour
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    addTask(pendingTask.title, pendingTask.category, pendingTask.energyRequired, pendingTask.view, pendingTask.client, pendingTask.billable, 2);
+                                                    setShowEstimateModal(false);
+                                                    setPendingTask(null);
+                                                }}
+                                                style={{
+                                                    padding: '10px 16px',
+                                                    background: '#667eea',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                2 hours
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    const time = prompt('Enter hours (e.g., 1.5):');
+                                                    if (time) {
+                                                        addTask(pendingTask.title, pendingTask.category, pendingTask.energyRequired, pendingTask.view, pendingTask.client, pendingTask.billable, parseFloat(time));
+                                                        setShowEstimateModal(false);
+                                                        setPendingTask(null);
+                                                    }
+                                                }}
+                                                style={{
+                                                    padding: '10px 16px',
+                                                    background: '#6b7280',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                Custom
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div style={{marginTop: '20px', display: 'flex', justifyContent: 'flex-end'}}>
+                                        <button
+                                            onClick={() => {
+                                                addTask(pendingTask.title, pendingTask.category, pendingTask.energyRequired, pendingTask.view, pendingTask.client, pendingTask.billable, null);
+                                                setShowEstimateModal(false);
+                                                setPendingTask(null);
+                                            }}
+                                            style={{
+                                                padding: '8px 16px',
+                                                background: '#9ca3af',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            Skip / Not Sure
                                         </button>
                                     </div>
                                 </div>
