@@ -445,9 +445,16 @@
                 }
             }, []);
 
-            // Auto-scroll chat
+            // Auto-scroll chat only when new messages are added
+            const prevMessageCount = useRef(0);
             useEffect(() => {
-                chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                // Only scroll if message count actually increased
+                if (messages.length > prevMessageCount.current) {
+                    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                    prevMessageCount.current = messages.length;
+                } else {
+                    prevMessageCount.current = messages.length;
+                }
             }, [messages]);
 
             // Save calendar input to localStorage when it changes
