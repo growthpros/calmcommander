@@ -365,6 +365,7 @@
             const [breakdownSubtasks, setBreakdownSubtasks] = useState([]);
             const [isBreakingDown, setIsBreakingDown] = useState(false);
             const [showBillingView, setShowBillingView] = useState(false);
+            const [expandedParents, setExpandedParents] = useState({});
             const [billingMonth, setBillingMonth] = useState(() => {
                 const now = new Date();
                 return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -630,23 +631,38 @@ Format your response as a simple numbered list, one step per line.`;
             const addSubtasksToList = () => {
                 if (breakdownSubtasks.length === 0 || !taskToBreakdown) return;
 
-                // Add each subtask as a new task with same properties as parent
-                const newTasks = breakdownSubtasks.map(subtaskTitle => ({
-                    id: Date.now() + Math.random(),
+                // Mark parent task as having subtasks
+                const updatedParent = {
+                    ...taskToBreakdown,
+                    hasSubtasks: true,
+                    subtaskCount: breakdownSubtasks.length
+                };
+
+                // Add each subtask with link to parent
+                const newSubtasks = breakdownSubtasks.map((subtaskTitle, index) => ({
+                    id: Date.now() + Math.random() + index,
                     title: subtaskTitle,
                     category: taskToBreakdown.category || 'Uncategorized',
                     energyRequired: taskToBreakdown.energyRequired || 'medium',
                     view: taskToBreakdown.view || 'later',
                     client: taskToBreakdown.client || '',
                     billable: taskToBreakdown.billable || false,
+                    parentTaskId: taskToBreakdown.id,
                     status: 'active',
                     createdDate: Date.now()
                 }));
 
+                // Update tasks: replace parent with updated parent, add all subtasks
                 const currentTasks = Array.isArray(tasks) ? tasks : [];
-                const updatedTasks = [...currentTasks, ...newTasks];
+                const updatedTasks = currentTasks.map(t =>
+                    t.id === taskToBreakdown.id ? updatedParent : t
+                ).concat(newSubtasks);
+
                 setTasks(updatedTasks);
                 localStorage.setItem('calmCommanderTasks', JSON.stringify(updatedTasks));
+
+                // Expand parent by default
+                setExpandedParents({...expandedParents, [taskToBreakdown.id]: true});
 
                 // Close modal
                 setShowBreakdownModal(false);
@@ -1213,14 +1229,67 @@ Format your response as a simple numbered list, one step per line.`;
                                             acc[cat].push(task);
                                             return acc;
                                         }, {})
-                                    ).map(([category, categoryTasks]) => (
-                                        <div key={category} className="task-category">
-                                            <h4>{category} ({categoryTasks.length})</h4>
-                                            <ul className="task-list">
-                                                {categoryTasks.map((task) => (
-                                                    <li key={task.id} className="task-item now" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                    ).map(([category, categoryTasks]) => {
+                                        // Separate parent tasks and subtasks
+                                        const parentTasks = categoryTasks.filter(t => !t.parentTaskId);
+                                        const subtasksByParent = categoryTasks
+                                            .filter(t => t.parentTaskId)
+                                            .reduce((acc, task) => {
+                                                if (!acc[task.parentTaskId]) acc[task.parentTaskId] = [];
+                                                acc[task.parentTaskId].push(task);
+                                                return acc;
+                                            }, {});
+
+                                        const renderTask = (task, isSubtask = false) => {
+                                            const subtasks = subtasksByParent[task.id] || [];
+                                            const completedSubtasks = subtasks.filter(st =>
+                                                completedTasks.some(ct => ct.id === st.id)
+                                            ).length;
+                                            const isExpanded = expandedParents[task.id];
+
+                                            return (
+                                                <React.Fragment key={task.id}>
+                                                    <li className="task-item now" style={{
+                                                        display: 'flex',
+                                                        justifyContent: 'space-between',
+                                                        alignItems: 'center',
+                                                        marginLeft: isSubtask ? '30px' : '0',
+                                                        background: isSubtask ? '#fafafa' : '#f9fafb',
+                                                        borderLeft: isSubtask ? '3px solid #d1d5db' : '4px solid'
+                                                    }}>
                                                         <div style={{flex: 1}}>
+                                                            {task.hasSubtasks && (
+                                                                <button
+                                                                    onClick={() => setExpandedParents({
+                                                                        ...expandedParents,
+                                                                        [task.id]: !isExpanded
+                                                                    })}
+                                                                    style={{
+                                                                        background: 'transparent',
+                                                                        border: 'none',
+                                                                        cursor: 'pointer',
+                                                                        marginRight: '8px',
+                                                                        fontSize: '14px',
+                                                                        padding: '0'
+                                                                    }}
+                                                                >
+                                                                    {isExpanded ? '▼' : '▶'}
+                                                                </button>
+                                                            )}
                                                             <span>{task.title}</span>
+                                                            {task.hasSubtasks && (
+                                                                <span style={{
+                                                                    marginLeft: '8px',
+                                                                    fontSize: '11px',
+                                                                    padding: '2px 6px',
+                                                                    borderRadius: '4px',
+                                                                    background: completedSubtasks === subtasks.length ? '#d1fae5' : '#e0e7ff',
+                                                                    color: completedSubtasks === subtasks.length ? '#065f46' : '#3730a3',
+                                                                    fontWeight: 600
+                                                                }}>
+                                                                    {completedSubtasks}/{subtasks.length} done
+                                                                </span>
+                                                            )}
                                                             <span style={{
                                                                 marginLeft: '10px',
                                                                 fontSize: '11px',
@@ -1274,20 +1343,22 @@ Format your response as a simple numbered list, one step per line.`;
                                                                 <option value="this-week">This Week</option>
                                                                 <option value="later">Later</option>
                                                             </select>
-                                                            <button
-                                                                onClick={() => handleBreakdownTask(task)}
-                                                                style={{
-                                                                    background: '#8b5cf6',
-                                                                    color: 'white',
-                                                                    border: 'none',
-                                                                    padding: '4px 8px',
-                                                                    borderRadius: '4px',
-                                                                    cursor: 'pointer',
-                                                                    fontSize: '12px'
-                                                                }}
-                                                            >
-                                                                Break Down
-                                                            </button>
+                                                            {!task.hasSubtasks && (
+                                                                <button
+                                                                    onClick={() => handleBreakdownTask(task)}
+                                                                    style={{
+                                                                        background: '#8b5cf6',
+                                                                        color: 'white',
+                                                                        border: 'none',
+                                                                        padding: '4px 8px',
+                                                                        borderRadius: '4px',
+                                                                        cursor: 'pointer',
+                                                                        fontSize: '12px'
+                                                                    }}
+                                                                >
+                                                                    Break Down
+                                                                </button>
+                                                            )}
                                                             <button
                                                                 onClick={() => {
                                                                     setTaskToComplete(task);
@@ -1321,10 +1392,20 @@ Format your response as a simple numbered list, one step per line.`;
                                                             </button>
                                                         </div>
                                                     </li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    ))}
+                                                    {task.hasSubtasks && isExpanded && subtasks.map(subtask => renderTask(subtask, true))}
+                                                </React.Fragment>
+                                            );
+                                        };
+
+                                        return (
+                                            <div key={category} className="task-category">
+                                                <h4>{category} ({parentTasks.length})</h4>
+                                                <ul className="task-list">
+                                                    {parentTasks.map((task) => renderTask(task))}
+                                                </ul>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             );
                         })()}
