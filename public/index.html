@@ -997,19 +997,110 @@
                 }
             };
 
+            // ============================================
+            // AI ESTIMATION FUNCTIONS
+            // ============================================
+
+            // Estimate spoons required based on task title keywords
+            const estimateSpoons = (title) => {
+                const lowerTitle = title.toLowerCase();
+
+                // 1 spoon - Simple, quick tasks
+                const simpleKeywords = ['quick', 'simple', 'email', 'text', 'call', 'check', 'review', 'read', 'respond', 'reply', 'short'];
+                if (simpleKeywords.some(keyword => lowerTitle.includes(keyword))) {
+                    return 1;
+                }
+
+                // 3 spoons - Complex tasks
+                const complexKeywords = ['write', 'create', 'prepare', 'design', 'analyze', 'research', 'plan', 'organize', 'develop'];
+                if (complexKeywords.some(keyword => lowerTitle.includes(keyword))) {
+                    return 3;
+                }
+
+                // 4 spoons - High-demand tasks
+                const demandingKeywords = ['presentation', 'proposal', 'strategy', 'difficult', 'complex', 'major', 'important', 'critical'];
+                if (demandingKeywords.some(keyword => lowerTitle.includes(keyword))) {
+                    return 4;
+                }
+
+                // 2 spoons - Default (routine tasks)
+                return 2;
+            };
+
+            // Estimate time required based on task title keywords (returns minutes)
+            const estimateTimeMinutes = (title) => {
+                const lowerTitle = title.toLowerCase();
+
+                // 15 minutes - Quick tasks
+                const quickKeywords = ['quick', 'email', 'text', 'check', 'short', '5-min', '10-min'];
+                if (quickKeywords.some(keyword => lowerTitle.includes(keyword))) {
+                    return 15;
+                }
+
+                // 30 minutes
+                const halfHourKeywords = ['brief', 'quick call', 'standup', 'update', 'review'];
+                if (halfHourKeywords.some(keyword => lowerTitle.includes(keyword))) {
+                    return 30;
+                }
+
+                // 2 hours
+                const twoHourKeywords = ['write', 'prepare', 'create', 'design', 'develop'];
+                if (twoHourKeywords.some(keyword => lowerTitle.includes(keyword))) {
+                    return 120;
+                }
+
+                // 3 hours - Major tasks
+                const majorKeywords = ['proposal', 'presentation', 'strategy', 'report', 'analysis'];
+                if (majorKeywords.some(keyword => lowerTitle.includes(keyword))) {
+                    return 180;
+                }
+
+                // Look for explicit time mentions
+                const timeMatch = lowerTitle.match(/(\d+)\s*(min|hour|hr)/i);
+                if (timeMatch) {
+                    const value = parseInt(timeMatch[1]);
+                    const unit = timeMatch[2].toLowerCase();
+                    if (unit.startsWith('min')) {
+                        return value;
+                    } else {
+                        return value * 60; // Convert hours to minutes
+                    }
+                }
+
+                // 1 hour - Default
+                return 60;
+            };
+
+            // Convert energy level to spoons (for backward compatibility)
+            const energyToSpoons = (energyRequired) => {
+                const mapping = {
+                    'low': 1,
+                    'medium': 2,
+                    'high': 3
+                };
+                return mapping[energyRequired] || 2;
+            };
+
             // Task management functions
-            const addTask = (title, category = 'Uncategorized', energyRequired = 'medium', view = 'later', client = '', billable = false, estimatedTime = null) => {
+            const addTask = (title, category = 'Uncategorized', energyRequired = 'medium', view = 'later', client = '', billable = false, estimatedTime = null, priority = 'medium') => {
+                // AI estimate spoons and time if not provided
+                const spoonsRequired = estimateSpoons(title);
+                const estimatedMinutes = estimatedTime !== null ? estimatedTime : estimateTimeMinutes(title);
+
                 const newTask = {
                     id: Date.now(),
                     title: title,
                     category: category,
                     energyRequired: energyRequired,
+                    spoonsRequired: spoonsRequired,  // NEW: AI-estimated spoons
+                    estimatedTime: estimatedMinutes,  // Time in minutes
+                    priority: priority,  // NEW: low/medium/high
                     view: view,
                     client: client,
                     billable: billable,
-                    estimatedTime: estimatedTime,
                     status: 'active',
-                    createdDate: Date.now()
+                    createdDate: Date.now(),
+                    subtasks: []  // NEW: support subtasks
                 };
                 // Ensure tasks is always an array
                 const currentTasks = Array.isArray(tasks) ? tasks : [];
@@ -1059,6 +1150,32 @@
                 setTaskToComplete(null);
             };
 
+            // ============================================
+            // INLINE TASK EDITING FUNCTIONS
+            // ============================================
+
+            const updateTaskAttribute = (taskId, attribute, value) => {
+                const updatedTasks = tasks.map(t =>
+                    t.id === taskId ? { ...t, [attribute]: value } : t
+                );
+                setTasks(updatedTasks);
+                localStorage.setItem('calmCommanderTasks', JSON.stringify(updatedTasks));
+            };
+
+            const formatTimeDisplay = (minutes) => {
+                if (minutes < 60) {
+                    return `${minutes}m`;
+                } else {
+                    const hours = Math.floor(minutes / 60);
+                    const mins = minutes % 60;
+                    if (mins === 0) {
+                        return `${hours}h`;
+                    } else {
+                        return `${hours}h ${mins}m`;
+                    }
+                }
+            };
+
             const setEnergy = (level) => {
                 const energy = {
                     date: new Date().toDateString(),
@@ -1093,11 +1210,15 @@
                                 title: taskText,
                                 category: 'Bulk Upload',
                                 energyRequired: 'medium',
+                                spoonsRequired: estimateSpoons(taskText),  // AI estimation
+                                estimatedTime: estimateTimeMinutes(taskText),  // AI estimation
+                                priority: 'medium',
                                 view: 'later',  // Brain dump location
                                 client: bulkUploadClient.trim(),
                                 billable: bulkUploadBillable,
                                 status: 'active',
-                                createdDate: Date.now()
+                                createdDate: Date.now(),
+                                subtasks: []
                             });
                         }
                     }
@@ -2072,6 +2193,66 @@ Format your response as a simple numbered list, one step per line.`;
                                                                 </button>
                                                             )}
                                                             <span>{task.title}</span>
+
+                                                            {/* SPOON COST BADGE */}
+                                                            {(task.spoonsRequired || task.spoonsRequired === 0) && (
+                                                                <span
+                                                                    style={{
+                                                                        marginLeft: '8px',
+                                                                        fontSize: '11px',
+                                                                        padding: '3px 8px',
+                                                                        borderRadius: '12px',
+                                                                        background: '#e0d5ff',
+                                                                        color: '#5b21b6',
+                                                                        fontWeight: 700,
+                                                                        border: '1px solid #c4b5fd',
+                                                                        cursor: 'pointer'
+                                                                    }}
+                                                                    title="Click to change spoon cost"
+                                                                    onClick={() => {
+                                                                        const newSpoons = prompt(`How many spoons does "${task.title}" require? (1-4)`, task.spoonsRequired);
+                                                                        if (newSpoons !== null && !isNaN(newSpoons)) {
+                                                                            const spoons = Math.max(1, Math.min(4, parseInt(newSpoons)));
+                                                                            updateTaskAttribute(task.id, 'spoonsRequired', spoons);
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    {'🥄'.repeat(task.spoonsRequired)} {task.spoonsRequired}
+                                                                </span>
+                                                            )}
+
+                                                            {/* TIME ESTIMATE BADGE */}
+                                                            {task.estimatedTime && (
+                                                                <span
+                                                                    style={{
+                                                                        marginLeft: '6px',
+                                                                        fontSize: '11px',
+                                                                        padding: '3px 8px',
+                                                                        borderRadius: '12px',
+                                                                        background: '#dbeafe',
+                                                                        color: '#1e40af',
+                                                                        fontWeight: 600,
+                                                                        border: '1px solid #93c5fd',
+                                                                        cursor: 'pointer'
+                                                                    }}
+                                                                    title="Click to change time estimate"
+                                                                    onClick={() => {
+                                                                        const options = ['15', '30', '60', '120', '180', '240'];
+                                                                        const labels = ['15min', '30min', '1h', '2h', '3h', '4h'];
+                                                                        const choice = prompt(
+                                                                            `Time estimate for "${task.title}"?\nEnter minutes (e.g., 15, 30, 60, 120) or choose:\n${labels.join(', ')}`,
+                                                                            task.estimatedTime
+                                                                        );
+                                                                        if (choice !== null && !isNaN(choice)) {
+                                                                            updateTaskAttribute(task.id, 'estimatedTime', parseInt(choice));
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    ⏱ {formatTimeDisplay(task.estimatedTime)}
+                                                                </span>
+                                                            )}
+
+                                                            {/* SUBTASK PROGRESS */}
                                                             {task.hasSubtasks && (
                                                                 <span style={{
                                                                     marginLeft: '8px',
@@ -2085,16 +2266,8 @@ Format your response as a simple numbered list, one step per line.`;
                                                                     {completedSubtasks}/{subtasks.length} done
                                                                 </span>
                                                             )}
-                                                            <span style={{
-                                                                marginLeft: '10px',
-                                                                fontSize: '11px',
-                                                                padding: '2px 6px',
-                                                                borderRadius: '4px',
-                                                                background: task.energyRequired === 'low' ? '#fee2e2' : task.energyRequired === 'high' ? '#d1fae5' : '#fef3c7',
-                                                                color: task.energyRequired === 'low' ? '#991b1b' : task.energyRequired === 'high' ? '#065f46' : '#92400e'
-                                                            }}>
-                                                                {task.energyRequired || 'medium'} energy
-                                                            </span>
+
+                                                            {/* CLIENT BADGE */}
                                                             {task.client && (
                                                                 <span style={{
                                                                     marginLeft: '8px',
@@ -2108,6 +2281,8 @@ Format your response as a simple numbered list, one step per line.`;
                                                                     {task.client}
                                                                 </span>
                                                             )}
+
+                                                            {/* BILLABLE BADGE */}
                                                             {task.billable && (
                                                                 <span style={{
                                                                     marginLeft: '6px',
@@ -2119,19 +2294,6 @@ Format your response as a simple numbered list, one step per line.`;
                                                                     fontWeight: 700
                                                                 }}>
                                                                     $ Billable
-                                                                </span>
-                                                            )}
-                                                            {task.estimatedTime && (
-                                                                <span style={{
-                                                                    marginLeft: '6px',
-                                                                    fontSize: '11px',
-                                                                    padding: '2px 6px',
-                                                                    borderRadius: '4px',
-                                                                    background: '#fef3c7',
-                                                                    color: '#78350f',
-                                                                    fontWeight: 600
-                                                                }}>
-                                                                    ~{task.estimatedTime < 1 ? `${task.estimatedTime * 60}min` : `${task.estimatedTime}h`}
                                                                 </span>
                                                             )}
                                                         </div>
