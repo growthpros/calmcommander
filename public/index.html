@@ -442,6 +442,259 @@
         };
 
         // ============================================
+        // NEURO-CHECK MODAL COMPONENT
+        // ============================================
+
+        const NeuroCheckModal = ({ isOpen, onClose, onComplete }) => {
+            const [moodLevel, setMoodLevel] = useState(5);
+            const [energyUnits, setEnergyUnits] = useState(5);
+            const [brainMode, setBrainMode] = useState('Normal');
+            const [selectedBurnout, setSelectedBurnout] = useState([]);
+            const [calculatedSpoons, setCalculatedSpoons] = useState(null);
+            const [showResult, setShowResult] = useState(false);
+
+            if (!isOpen) return null;
+
+            const handleCalculate = () => {
+                const result = calculateDailyCapacity(energyUnits, brainMode, selectedBurnout);
+                setCalculatedSpoons(result.final_capacity);
+
+                const capacityData = {
+                    date: new Date().toISOString().split('T')[0],
+                    moodLevel,
+                    energyUnits,
+                    brainMode,
+                    burnoutFlags: selectedBurnout,
+                    totalSpoons: result.final_capacity,
+                    remainingSpoons: result.final_capacity,
+                    quickBoostersUsed: [],
+                    adjustments: result,
+                    completedAt: new Date().toISOString()
+                };
+
+                localStorage.setItem(
+                    `calm-neuro-check-${capacityData.date}`,
+                    JSON.stringify(capacityData)
+                );
+
+                setShowResult(true);
+                onComplete(capacityData);
+            };
+
+            const toggleBurnout = (indicatorId) => {
+                setSelectedBurnout(prev =>
+                    prev.includes(indicatorId)
+                        ? prev.filter(id => id !== indicatorId)
+                        : [...prev, indicatorId]
+                );
+            };
+
+            const getMoodEmoji = (level) => {
+                if (level <= 3) return '😢';
+                if (level <= 6) return '😐';
+                if (level <= 8) return '🙂';
+                return '😊';
+            };
+
+            return (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    style={{ background: 'rgba(0, 0, 0, 0.5)' }}
+                    onClick={onClose}
+                >
+                    <div
+                        className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                            <h2 className="text-xl font-semibold text-gray-900">Daily Neuro-Check</h2>
+                            <button
+                                onClick={onClose}
+                                className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        <div className="px-6 py-4">
+                            {!showResult ? (
+                                <>
+                                    <p className="text-gray-600 mb-6">
+                                        Let's figure out your spoon capacity for today. This helps us plan realistically.
+                                    </p>
+
+                                    {/* Mood Level Slider */}
+                                    <div className="mb-6">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Mood Level (for tracking patterns)
+                                        </label>
+                                        <div className="flex items-center gap-4">
+                                            <span className="text-4xl">{getMoodEmoji(moodLevel)}</span>
+                                            <div className="flex-1">
+                                                <input
+                                                    type="range"
+                                                    min="1"
+                                                    max="10"
+                                                    value={moodLevel}
+                                                    onChange={(e) => setMoodLevel(parseInt(e.target.value))}
+                                                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                                                />
+                                                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                                                    <span>1 (low)</span>
+                                                    <span className="font-semibold text-purple-600">{moodLevel}/10</span>
+                                                    <span>10 (high)</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Energy Units Slider */}
+                                    <div className="mb-6">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Energy Units (Spoons You Woke Up With)
+                                        </label>
+                                        <div className="flex items-center gap-4">
+                                            <span className="text-4xl">{'🥄'.repeat(Math.max(1, energyUnits))}</span>
+                                            <div className="flex-1">
+                                                <input
+                                                    type="range"
+                                                    min="0"
+                                                    max="10"
+                                                    value={energyUnits}
+                                                    onChange={(e) => setEnergyUnits(parseInt(e.target.value))}
+                                                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                                />
+                                                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                                                    <span>0 (depleted)</span>
+                                                    <span className="font-semibold text-blue-600">{energyUnits} spoons</span>
+                                                    <span>10 (full)</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Brain Mode Selector */}
+                                    <div className="mb-6">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Brain Mode
+                                        </label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {['Normal', 'Fog', 'Shutdown'].map(mode => (
+                                                <button
+                                                    key={mode}
+                                                    onClick={() => setBrainMode(mode)}
+                                                    className={`px-4 py-3 rounded-lg font-medium transition-all ${
+                                                        brainMode === mode
+                                                            ? 'bg-purple-600 text-white shadow-lg'
+                                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                                    }`}
+                                                >
+                                                    {mode}
+                                                    {mode === 'Fog' && ' (-2)'}
+                                                    {mode === 'Shutdown' && ' (-4)'}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Burnout Indicators */}
+                                    <div className="mb-6">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Burnout Indicators
+                                            {selectedBurnout.length >= 3 && (
+                                                <span className="ml-2 text-red-600 font-semibold">
+                                                    (Protection mode: -3 spoons)
+                                                </span>
+                                            )}
+                                        </label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {BURNOUT_INDICATORS.map(indicator => (
+                                                <button
+                                                    key={indicator.id}
+                                                    onClick={() => toggleBurnout(indicator.id)}
+                                                    className={`p-3 text-left rounded-lg transition-all ${
+                                                        selectedBurnout.includes(indicator.id)
+                                                            ? 'bg-red-100 border-2 border-red-400 shadow-sm'
+                                                            : 'bg-gray-50 border-2 border-transparent hover:bg-gray-100'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-start gap-2">
+                                                        <span className="text-xl">{indicator.icon}</span>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="text-sm font-medium text-gray-900">
+                                                                {indicator.label}
+                                                            </div>
+                                                            <div className="text-xs text-gray-500 mt-0.5">
+                                                                {indicator.description}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                        {selectedBurnout.length >= 3 && (
+                                            <div className="mt-3 p-3 bg-red-50 border-l-4 border-red-400 text-sm text-red-700">
+                                                ⚠️ Multiple burnout indicators detected. Applying protection mode to prevent overcommitment.
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Calculate Button */}
+                                    <button
+                                        onClick={handleCalculate}
+                                        className="w-full bg-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
+                                    >
+                                        Calculate My Spoons
+                                    </button>
+                                </>
+                            ) : (
+                                /* Result Display */
+                                <div className="text-center py-6">
+                                    <div className="text-6xl mb-4">
+                                        {'🥄 '.repeat(calculatedSpoons || 1)}
+                                    </div>
+                                    <h3 className="text-3xl font-bold text-gray-900 mb-2">
+                                        {calculatedSpoons} spoons today
+                                    </h3>
+                                    <p className="text-gray-600 mb-6">
+                                        Your daily capacity has been calculated and saved.
+                                    </p>
+
+                                    {/* Breakdown */}
+                                    <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
+                                        <div className="text-sm font-medium text-gray-700 mb-2">Calculation:</div>
+                                        <div className="space-y-1 text-sm text-gray-600">
+                                            <div>Starting energy: {energyUnits} spoons</div>
+                                            {brainMode !== 'Normal' && (
+                                                <div>Brain mode ({brainMode}): {brainMode === 'Fog' ? '-2' : '-4'} spoons</div>
+                                            )}
+                                            {selectedBurnout.length >= 3 && (
+                                                <div>Burnout protection: -3 spoons</div>
+                                            )}
+                                            <div className="pt-2 border-t border-gray-300 font-semibold text-gray-900">
+                                                Final capacity: {calculatedSpoons} spoons
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={() => {
+                                            onClose();
+                                            setShowResult(false);
+                                        }}
+                                        className="w-full bg-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
+                                    >
+                                        Start My Day
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // ============================================
         // END REUSABLE COMPONENTS
         // ============================================
 
@@ -450,6 +703,120 @@
             "overwhelmed", "frozen", "shutdown", "too much", "crisis",
             "can't do this", "help", "drowning", "stuck"
         ];
+
+        // ============================================
+        // ENERGY MANAGEMENT CONSTANTS
+        // ============================================
+
+        // Burnout indicators (7 total)
+        const BURNOUT_INDICATORS = [
+            {
+                id: 'sleep_disrupted',
+                label: 'Sleep Disrupted',
+                description: 'Irregular or insufficient rest patterns',
+                icon: '😴'
+            },
+            {
+                id: 'emotional_exhaustion',
+                label: 'Emotional Exhaustion',
+                description: 'Drained emotional reserves',
+                icon: '😓'
+            },
+            {
+                id: 'cognitive_overload',
+                label: 'Cognitive Overload',
+                description: 'Mental processing at maximum',
+                icon: '🧠'
+            },
+            {
+                id: 'social_withdrawal',
+                label: 'Social Withdrawal',
+                description: 'Reduced interaction capacity',
+                icon: '🚪'
+            },
+            {
+                id: 'physical_fatigue',
+                label: 'Physical Fatigue',
+                description: 'Body-level tiredness',
+                icon: '🥱'
+            },
+            {
+                id: 'motivation_loss',
+                label: 'Motivation Loss',
+                description: 'Reduced drive for activities',
+                icon: '😑'
+            },
+            {
+                id: 'increased_irritability',
+                label: 'Increased Irritability',
+                description: 'Heightened frustration responses',
+                icon: '😤'
+            }
+        ];
+
+        // Quick spoon boosters
+        const QUICK_BOOSTERS = [
+            {
+                id: 'coffee',
+                name: 'Coffee/Caffeine',
+                spoons: 1,
+                duration: 'instant',
+                type: 'Chemical stimulant',
+                icon: '☕'
+            },
+            {
+                id: 'walk',
+                name: '5-min walk',
+                spoons: 1,
+                duration: '5m',
+                type: 'Movement activation',
+                icon: '🚶'
+            },
+            {
+                id: 'medication',
+                name: 'ADHD medication',
+                spoons: 2,
+                duration: 'instant',
+                type: 'Medical intervention',
+                icon: '💊'
+            },
+            {
+                id: 'nap',
+                name: '20-min power nap',
+                spoons: 2,
+                duration: '20m',
+                type: 'Rest recovery',
+                icon: '😴'
+            }
+        ];
+
+        // Spoon calculation function
+        const calculateDailyCapacity = (energyUnits, brainMode, burnoutFlags) => {
+            let capacity = energyUnits; // 0-10 base
+
+            // Brain mode adjustment
+            const brainModeAdjustments = {
+                'Normal': 0,
+                'Fog': -2,
+                'Shutdown': -4
+            };
+            const brainModeAdj = brainModeAdjustments[brainMode] || 0;
+            capacity += brainModeAdj;
+
+            // Burnout protection (3+ flags = -3 spoons)
+            const burnoutAdj = burnoutFlags.length >= 3 ? -3 : 0;
+            capacity += burnoutAdj;
+
+            // Floor at 0
+            const finalCapacity = Math.max(0, capacity);
+
+            return {
+                original_energy: energyUnits,
+                brain_mode_adjustment: brainModeAdj,
+                burnout_adjustment: burnoutAdj,
+                final_capacity: finalCapacity
+            };
+        };
 
         function App() {
             const [apiKey, setApiKey] = useState('');
@@ -482,6 +849,44 @@
                 const now = new Date();
                 return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
             });
+
+            // Neuro-check state
+            const [showNeuroCheck, setShowNeuroCheck] = useState(false);
+            const [dailyCapacity, setDailyCapacity] = useState(() => {
+                const today = new Date().toISOString().split('T')[0];
+                const stored = localStorage.getItem(`calm-neuro-check-${today}`);
+                if (stored) {
+                    try {
+                        return JSON.parse(stored);
+                    } catch (e) {
+                        return {
+                            date: today,
+                            moodLevel: null,
+                            energyUnits: null,
+                            brainMode: null,
+                            burnoutFlags: [],
+                            totalSpoons: 0,
+                            remainingSpoons: 0,
+                            quickBoostersUsed: [],
+                            adjustments: {},
+                            completedAt: null
+                        };
+                    }
+                }
+                return {
+                    date: today,
+                    moodLevel: null,
+                    energyUnits: null,
+                    brainMode: null,
+                    burnoutFlags: [],
+                    totalSpoons: 0,
+                    remainingSpoons: 0,
+                    quickBoostersUsed: [],
+                    adjustments: {},
+                    completedAt: null
+                };
+            });
+
             const chatEndRef = useRef(null);
 
             // Load from localStorage on mount
@@ -1112,90 +1517,126 @@ Format your response as a simple numbered list, one step per line.`;
                     </div>
 
                     <div className="content">
-                        {/* Energy Check-in Panel */}
-                        <div style={{
-                            background: '#f9fafb',
-                            border: '2px solid #e5e7eb',
-                            borderRadius: '8px',
-                            padding: '20px',
-                            marginBottom: '20px'
-                        }}>
-                            {!dailyEnergy ? (
-                                <div>
-                                    <h3 style={{fontSize: '16px', marginBottom: '12px', color: '#333'}}>
-                                        What's your energy level today?
-                                    </h3>
-                                    <div style={{display: 'flex', gap: '10px'}}>
+                        {/* Spoon Counter / Neuro-Check Panel */}
+                        {dailyCapacity.totalSpoons > 0 ? (
+                            <div className="mb-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border-2 border-purple-200">
+                                <div className="flex justify-between items-center">
+                                    <div>
+                                        <div className="text-3xl mb-1">
+                                            {'🥄 '.repeat(Math.min(10, dailyCapacity.remainingSpoons))}
+                                            {dailyCapacity.totalSpoons - dailyCapacity.remainingSpoons > 0 && (
+                                                <span className="opacity-30">
+                                                    {'🥄 '.repeat(Math.min(10, dailyCapacity.totalSpoons - dailyCapacity.remainingSpoons))}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="text-sm text-gray-700 font-medium">
+                                            {dailyCapacity.remainingSpoons}/{dailyCapacity.totalSpoons} spoons remaining
+                                        </p>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Mood: {dailyCapacity.moodLevel}/10 •
+                                            Brain: {dailyCapacity.brainMode}
+                                            {dailyCapacity.burnoutFlags && dailyCapacity.burnoutFlags.length > 0 &&
+                                                ` • ${dailyCapacity.burnoutFlags.length} burnout flag${dailyCapacity.burnoutFlags.length > 1 ? 's' : ''}`
+                                            }
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowNeuroCheck(true)}
+                                        className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 transition-colors"
+                                    >
+                                        Refresh
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="mb-4 p-4 bg-yellow-50 border-2 border-yellow-300 rounded-lg">
+                                <div className="flex items-start gap-3">
+                                    <span className="text-2xl">👋</span>
+                                    <div className="flex-1">
+                                        <h3 className="font-semibold text-gray-900 mb-1">
+                                            Start Your Day with a Neuro-Check
+                                        </h3>
+                                        <p className="text-sm text-gray-700 mb-3">
+                                            Track your energy with Spoon Theory - helps us plan realistically and avoid overwhelm.
+                                        </p>
                                         <button
-                                            onClick={() => setEnergy('low')}
-                                            style={{
-                                                flex: 1,
-                                                padding: '10px',
-                                                border: '2px solid #e5e7eb',
-                                                borderRadius: '8px',
-                                                background: 'white',
-                                                cursor: 'pointer',
-                                                fontWeight: 600
-                                            }}
+                                            onClick={() => setShowNeuroCheck(true)}
+                                            className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 transition-colors"
                                         >
-                                            Low
-                                        </button>
-                                        <button
-                                            onClick={() => setEnergy('medium')}
-                                            style={{
-                                                flex: 1,
-                                                padding: '10px',
-                                                border: '2px solid #e5e7eb',
-                                                borderRadius: '8px',
-                                                background: 'white',
-                                                cursor: 'pointer',
-                                                fontWeight: 600
-                                            }}
-                                        >
-                                            Medium
-                                        </button>
-                                        <button
-                                            onClick={() => setEnergy('high')}
-                                            style={{
-                                                flex: 1,
-                                                padding: '10px',
-                                                border: '2px solid #e5e7eb',
-                                                borderRadius: '8px',
-                                                background: 'white',
-                                                cursor: 'pointer',
-                                                fontWeight: 600
-                                            }}
-                                        >
-                                            High
+                                            Do Neuro-Check (2 min)
                                         </button>
                                     </div>
                                 </div>
-                            ) : (
-                                <div>
-                                    <h3 style={{fontSize: '16px', marginBottom: '12px', color: '#333'}}>
-                                        Today's Energy: <span style={{textTransform: 'capitalize', fontWeight: 'bold'}}>{dailyEnergy.level}</span>
+                            </div>
+                        )}
+
+                        {/* Quick Spoon Boosters - Only show if neuro-check done */}
+                        {dailyCapacity.totalSpoons > 0 && (
+                            <div className="mb-4">
+                                <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+                                    <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                        <span>⚡</span>
+                                        <span>Quick Spoon Boosters</span>
+                                        <span className="text-xs text-gray-500 font-normal">
+                                            (use once per day each)
+                                        </span>
                                     </h3>
-                                    <button
-                                        onClick={() => {
-                                            setDailyEnergy(null);
-                                            localStorage.removeItem('ccDailyEnergy');
-                                        }}
-                                        style={{
-                                            padding: '8px 16px',
-                                            background: '#6b7280',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '6px',
-                                            cursor: 'pointer',
-                                            fontSize: '14px',
-                                            fontWeight: 600
-                                        }}
-                                    >
-                                        Update Energy
-                                    </button>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {QUICK_BOOSTERS.map(booster => {
+                                            const alreadyUsed = dailyCapacity.quickBoostersUsed &&
+                                                               dailyCapacity.quickBoostersUsed.includes(booster.id);
+                                            return (
+                                                <button
+                                                    key={booster.id}
+                                                    onClick={() => {
+                                                        if (alreadyUsed) return;
+
+                                                        const updated = {
+                                                            ...dailyCapacity,
+                                                            remainingSpoons: dailyCapacity.remainingSpoons + booster.spoons,
+                                                            totalSpoons: dailyCapacity.totalSpoons + booster.spoons,
+                                                            quickBoostersUsed: [...(dailyCapacity.quickBoostersUsed || []), booster.id]
+                                                        };
+
+                                                        localStorage.setItem(
+                                                            `calm-neuro-check-${updated.date}`,
+                                                            JSON.stringify(updated)
+                                                        );
+
+                                                        setDailyCapacity(updated);
+                                                    }}
+                                                    disabled={alreadyUsed}
+                                                    className={`p-3 rounded-lg text-left transition-all ${
+                                                        alreadyUsed
+                                                            ? 'bg-gray-200 opacity-50 cursor-not-allowed'
+                                                            : 'bg-green-100 hover:bg-green-200 cursor-pointer'
+                                                    }`}
+                                                    style={{
+                                                        border: alreadyUsed ? '2px solid #d1d5db' : '2px solid #10b981'
+                                                    }}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-2xl">{booster.icon}</span>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="text-sm font-semibold text-gray-900">
+                                                                {booster.name}
+                                                            </div>
+                                                            <div className="text-xs text-gray-600">
+                                                                {alreadyUsed ? '✓ Used' : `+${booster.spoons} 🥄`}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    <p className="text-xs text-gray-600 mt-3">
+                                        Need a boost? Click to add spoons to your day. Each can be used once.
+                                    </p>
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
 
                         {/* Calendar Input */}
                         <div style={{
@@ -2471,6 +2912,16 @@ Format your response as a simple numbered list, one step per line.`;
                                 </div>
                             </div>
                         )}
+
+                        {/* Neuro-Check Modal */}
+                        <NeuroCheckModal
+                            isOpen={showNeuroCheck}
+                            onClose={() => setShowNeuroCheck(false)}
+                            onComplete={(capacityData) => {
+                                setDailyCapacity(capacityData);
+                                setShowNeuroCheck(false);
+                            }}
+                        />
                     </div>
                 </div>
             );
