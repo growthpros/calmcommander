@@ -1226,50 +1226,40 @@ Format your response as a simple numbered list, one step per line.`;
                             </p>
                         </div>
 
-                        {/* Bulk Upload and Billing Buttons */}
-                        <div style={{marginBottom: '20px', textAlign: 'center', display: 'flex', gap: '10px', justifyContent: 'center'}}>
-                            <div style={{flex: 1, maxWidth: '300px'}}>
-                                <button
-                                    onClick={() => setShowBulkUploadModal(true)}
-                                    style={{
-                                        width: '100%',
-                                        padding: '12px 24px',
-                                        background: '#667eea',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '8px',
-                                        fontSize: '15px',
-                                        fontWeight: 600,
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    Bulk Upload Tasks
-                                </button>
-                                <p style={{fontSize: '12px', color: '#6b7280', marginTop: '8px'}}>
-                                    Paste your entire task list
-                                </p>
-                            </div>
-                            <div style={{flex: 1, maxWidth: '300px'}}>
-                                <button
-                                    onClick={() => setShowBillingView(true)}
-                                    style={{
-                                        width: '100%',
-                                        padding: '12px 24px',
-                                        background: '#10b981',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '8px',
-                                        fontSize: '15px',
-                                        fontWeight: 600,
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    View Billing
-                                </button>
-                                <p style={{fontSize: '12px', color: '#6b7280', marginTop: '8px'}}>
-                                    Hours by client for invoicing
-                                </p>
-                            </div>
+                        {/* Quick Action Buttons */}
+                        <div style={{marginBottom: '20px', display: 'flex', gap: '10px'}}>
+                            <button
+                                onClick={() => setShowBulkUploadModal(true)}
+                                style={{
+                                    flex: 1,
+                                    padding: '10px 16px',
+                                    background: '#667eea',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontSize: '14px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                📋 Bulk Upload
+                            </button>
+                            <button
+                                onClick={() => setShowBillingView(true)}
+                                style={{
+                                    flex: 1,
+                                    padding: '10px 16px',
+                                    background: '#10b981',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontSize: '14px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                💰 View Billing
+                            </button>
                         </div>
 
                         {/* Quick Add Task Buttons - Collapsible */}
