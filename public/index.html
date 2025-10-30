@@ -1380,10 +1380,16 @@
                         if (Array.isArray(parsed)) {
                             setTasks(parsed);
                         } else {
+                            // Backup corrupted data before removing
+                            console.error('⚠️ Tasks data is not an array, backing up to ccTasksBackup');
+                            localStorage.setItem('ccTasksBackup', savedTasks);
                             setTasks([]);
                             localStorage.removeItem('calmCommanderTasks');
                         }
                     } catch (e) {
+                        // Backup corrupted data before removing
+                        console.error('⚠️ Tasks data is corrupted, backing up to ccTasksBackup', e);
+                        localStorage.setItem('ccTasksBackup', savedTasks);
                         setTasks([]);
                         localStorage.removeItem('calmCommanderTasks');
                     }
