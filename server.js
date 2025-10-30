@@ -169,6 +169,17 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Calm Commander is running' });
 });
 
+// Version check endpoint - bypasses all caching
+app.get('/version', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({
+    version: '3.0-NEUROCHECK',
+    message: 'New neuro-check features loaded!',
+    features: ['Daily Neuro-Check', 'Quick Spoon Boosters', 'AI Task Estimation'],
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🧘 Calm Commander server running on http://0.0.0.0:${PORT}`);
 });
