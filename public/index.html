@@ -2939,14 +2939,14 @@ Format your response as a simple numbered list, one step per line.`;
                                                                     }}
                                                                     title="Click to change time estimate"
                                                                     onClick={() => {
-                                                                        const options = ['15', '30', '60', '120', '180', '240'];
-                                                                        const labels = ['15min', '30min', '1h', '2h', '3h', '4h'];
+                                                                        const currentHours = (task.estimatedTime / 60).toFixed(2);
                                                                         const choice = prompt(
-                                                                            `Time estimate for "${task.title}"?\nEnter minutes (e.g., 15, 30, 60, 120) or choose:\n${labels.join(', ')}`,
-                                                                            task.estimatedTime
+                                                                            `Time estimate for "${task.title}"?\n\nEnter in HOURS (e.g., 0.25, 0.5, 1, 2, 3)\nCurrent: ${currentHours} hours`,
+                                                                            currentHours
                                                                         );
-                                                                        if (choice !== null && !isNaN(choice)) {
-                                                                            updateTaskAttribute(task.id, 'estimatedTime', parseInt(choice));
+                                                                        if (choice !== null && !isNaN(choice) && parseFloat(choice) > 0) {
+                                                                            const minutes = Math.round(parseFloat(choice) * 60);
+                                                                            updateTaskAttribute(task.id, 'estimatedTime', minutes);
                                                                         }
                                                                     }}
                                                                 >
