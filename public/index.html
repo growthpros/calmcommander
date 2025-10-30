@@ -557,6 +557,12 @@
                                     <div className="mb-6">
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
                                             Energy Units (Spoons You Woke Up With)
+                                            <span
+                                                className="ml-2 text-blue-500 cursor-help"
+                                                title="This determines your daily spoon capacity. Different from mood - it's about energy/executive function, not emotions."
+                                            >
+                                                ℹ️
+                                            </span>
                                         </label>
                                         <div className="flex items-center gap-4">
                                             <span className="text-4xl">{'🥄'.repeat(Math.max(1, energyUnits))}</span>
@@ -582,6 +588,12 @@
                                     <div className="mb-6">
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
                                             Brain Mode
+                                            <span
+                                                className="ml-2 text-purple-500 cursor-help"
+                                                title="Fog = harder to focus, distracted (-2 spoons) | Shutdown = barely functioning (-4 spoons)"
+                                            >
+                                                ℹ️
+                                            </span>
                                         </label>
                                         <div className="grid grid-cols-3 gap-2">
                                             {['Normal', 'Fog', 'Shutdown'].map(mode => (
@@ -606,6 +618,12 @@
                                     <div className="mb-6">
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
                                             Burnout Indicators
+                                            <span
+                                                className="ml-2 text-amber-500 cursor-help"
+                                                title="Checking 3+ indicators triggers protection mode (-3 spoons to prevent overcommitment and help you pace yourself)"
+                                            >
+                                                ℹ️
+                                            </span>
                                             {selectedBurnout.length >= 3 && (
                                                 <span className="ml-2 text-red-600 font-semibold">
                                                     (Protection mode: -3 spoons)
@@ -1705,7 +1723,24 @@ Format your response as a simple numbered list, one step per line.`;
                         {dailyCapacity.totalSpoons > 0 ? (
                             <div className="mb-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border-2 border-purple-200">
                                 <div className="flex justify-between items-center">
-                                    <div>
+                                    <div
+                                        className="cursor-pointer"
+                                        onClick={() => {
+                                            const breakdown = dailyCapacity.adjustments || {};
+                                            const boostersUsed = dailyCapacity.quickBoostersUsed || [];
+                                            const boosterSpoons = boostersUsed.length;
+                                            alert(
+                                                `🥄 Your Spoon Breakdown:\n\n` +
+                                                `• Started with: ${breakdown.original_energy || dailyCapacity.energyUnits} spoons (from energy check)\n` +
+                                                `• Brain mode: ${breakdown.brain_mode_adjustment || 0} spoons (${dailyCapacity.brainMode})\n` +
+                                                `• Burnout: ${breakdown.burnout_adjustment || 0} spoons (${dailyCapacity.burnoutFlags?.length || 0} flags)\n` +
+                                                `• Boosters used: +${boosterSpoons} spoons (${boostersUsed.length} boosters)\n` +
+                                                `• Spent on tasks: -${(dailyCapacity.totalSpoons + (breakdown.brain_mode_adjustment || 0) + (breakdown.burnout_adjustment || 0)) - dailyCapacity.remainingSpoons - boosterSpoons} spoons\n\n` +
+                                                `= ${dailyCapacity.remainingSpoons} spoons remaining`
+                                            );
+                                        }}
+                                        title="Click to see your spoon breakdown"
+                                    >
                                         <div className="text-3xl mb-1">
                                             {'🥄 '.repeat(Math.min(10, dailyCapacity.remainingSpoons))}
                                             {dailyCapacity.totalSpoons - dailyCapacity.remainingSpoons > 0 && (
@@ -1716,6 +1751,7 @@ Format your response as a simple numbered list, one step per line.`;
                                         </div>
                                         <p className="text-sm text-gray-700 font-medium">
                                             {dailyCapacity.remainingSpoons}/{dailyCapacity.totalSpoons} spoons remaining
+                                            <span className="ml-2 text-purple-500">ℹ️</span>
                                         </p>
                                         <p className="text-xs text-gray-500 mt-1">
                                             Mood: {dailyCapacity.moodLevel}/10 •
