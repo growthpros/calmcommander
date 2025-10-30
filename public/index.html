@@ -1745,6 +1745,147 @@
                 }
             };
 
+            // Export all data to JSON file
+            const exportData = () => {
+                const today = new Date().toISOString().split('T')[0];
+                const exportData = {
+                    exportDate: new Date().toISOString(),
+                    version: '3.0-NEUROCHECK',
+                    data: {
+                        tasks: tasks,
+                        completedTasks: completedTasks,
+                        dailyCapacity: dailyCapacity,
+                        apiKey: apiKey,
+                        messages: messages,
+                        currentMode: currentMode,
+                        dailyEnergy: dailyEnergy,
+                        calendarInput: calendarInput,
+                        crisisMode: crisisMode,
+                        spoonDebt: spoonDebt,
+                        // Get all neuro-check data
+                        neuroCheckHistory: Object.keys(localStorage)
+                            .filter(key => key.startsWith('calm-neuro-check-'))
+                            .map(key => ({
+                                key: key,
+                                data: JSON.parse(localStorage.getItem(key))
+                            })),
+                        // Get override log
+                        overrideLog: JSON.parse(localStorage.getItem('ccOverrideLog') || '{"overrides":[]}'),
+                        // Get backup if exists
+                        backup: localStorage.getItem('ccTasksBackup')
+                    }
+                };
+
+                const dataStr = JSON.stringify(exportData, null, 2);
+                const blob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `calm-commander-backup-${today}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
+                alert(`✅ Data exported!\n\nFile: calm-commander-backup-${today}.json\n\nThis includes:\n• ${tasks.length} active tasks\n• ${completedTasks.length} completed tasks\n• Neuro-check history\n• Override log\n• All settings\n\nKeep this file safe for billing records!`);
+            };
+
+            // Import data from JSON file
+            const importData = () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const importedData = JSON.parse(event.target.result);
+
+                            if (!importedData.data) {
+                                alert('❌ Invalid backup file format');
+                                return;
+                            }
+
+                            const confirmed = confirm(
+                                `⚠️ Import Data from ${importedData.exportDate}?\n\n` +
+                                `This will restore:\n` +
+                                `• ${importedData.data.tasks?.length || 0} active tasks\n` +
+                                `• ${importedData.data.completedTasks?.length || 0} completed tasks\n` +
+                                `• Neuro-check history\n` +
+                                `• All settings\n\n` +
+                                `Current data will be REPLACED. Continue?`
+                            );
+
+                            if (!confirmed) return;
+
+                            // Restore all data
+                            if (importedData.data.tasks) {
+                                setTasks(importedData.data.tasks);
+                                localStorage.setItem('calmCommanderTasks', JSON.stringify(importedData.data.tasks));
+                            }
+                            if (importedData.data.completedTasks) {
+                                setCompletedTasks(importedData.data.completedTasks);
+                                localStorage.setItem('ccCompletedTasks', JSON.stringify(importedData.data.completedTasks));
+                            }
+                            if (importedData.data.dailyCapacity) {
+                                setDailyCapacity(importedData.data.dailyCapacity);
+                                const date = importedData.data.dailyCapacity.date;
+                                localStorage.setItem(`calm-neuro-check-${date}`, JSON.stringify(importedData.data.dailyCapacity));
+                            }
+                            if (importedData.data.messages) {
+                                setMessages(importedData.data.messages);
+                                localStorage.setItem('calmCommanderMessages', JSON.stringify(importedData.data.messages));
+                            }
+                            if (importedData.data.currentMode) {
+                                setCurrentMode(importedData.data.currentMode);
+                                localStorage.setItem('calmCommanderMode', importedData.data.currentMode);
+                            }
+                            if (importedData.data.dailyEnergy) {
+                                setDailyEnergy(importedData.data.dailyEnergy);
+                                localStorage.setItem('ccDailyEnergy', JSON.stringify(importedData.data.dailyEnergy));
+                            }
+                            if (importedData.data.calendarInput) {
+                                setCalendarInput(importedData.data.calendarInput);
+                                localStorage.setItem('ccCalendarInput', JSON.stringify(importedData.data.calendarInput));
+                            }
+                            if (importedData.data.crisisMode) {
+                                setCrisisMode(importedData.data.crisisMode);
+                                if (importedData.data.crisisMode.active) {
+                                    localStorage.setItem('ccCrisisMode', JSON.stringify(importedData.data.crisisMode));
+                                }
+                            }
+                            if (importedData.data.spoonDebt) {
+                                setSpoonDebt(importedData.data.spoonDebt);
+                                localStorage.setItem('ccSpoonDebt', JSON.stringify(importedData.data.spoonDebt));
+                            }
+                            // Restore neuro-check history
+                            if (importedData.data.neuroCheckHistory) {
+                                importedData.data.neuroCheckHistory.forEach(item => {
+                                    localStorage.setItem(item.key, JSON.stringify(item.data));
+                                });
+                            }
+                            // Restore override log
+                            if (importedData.data.overrideLog) {
+                                localStorage.setItem('ccOverrideLog', JSON.stringify(importedData.data.overrideLog));
+                            }
+
+                            alert('✅ Data imported successfully!\n\nAll your tasks, billing data, and settings have been restored.');
+
+                            // Refresh page to ensure everything loads correctly
+                            window.location.reload();
+                        } catch (error) {
+                            alert(`❌ Error importing data:\n${error.message}\n\nPlease check the file and try again.`);
+                            console.error('Import error:', error);
+                        }
+                    };
+                    reader.readAsText(file);
+                };
+                input.click();
+            };
+
             const setEnergy = (level) => {
                 const energy = {
                     date: new Date().toDateString(),
@@ -2512,6 +2653,44 @@ Format your response as a simple numbered list, one step per line.`;
                                 }}
                             >
                                 💰 View Billing
+                            </button>
+                        </div>
+
+                        {/* Data Backup/Restore Buttons */}
+                        <div style={{display: 'flex', gap: '10px', marginBottom: '20px'}}>
+                            <button
+                                onClick={exportData}
+                                style={{
+                                    flex: 1,
+                                    padding: '10px 16px',
+                                    background: '#3b82f6',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontSize: '13px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer'
+                                }}
+                                title="Download backup of all data including billing"
+                            >
+                                📥 Export Data
+                            </button>
+                            <button
+                                onClick={importData}
+                                style={{
+                                    flex: 1,
+                                    padding: '10px 16px',
+                                    background: '#8b5cf6',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontSize: '13px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer'
+                                }}
+                                title="Restore from backup file"
+                            >
+                                📤 Import Data
                             </button>
                         </div>
 
