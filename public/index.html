@@ -1717,6 +1717,14 @@
                 localStorage.setItem('calmCommanderTasks', JSON.stringify(updatedTasks));
             };
 
+            const updateCompletedTask = (taskId, attribute, value) => {
+                const updatedCompleted = completedTasks.map(t =>
+                    t.id === taskId ? { ...t, [attribute]: value } : t
+                );
+                setCompletedTasks(updatedCompleted);
+                localStorage.setItem('ccCompletedTasks', JSON.stringify(updatedCompleted));
+            };
+
             const formatTimeDisplay = (minutes) => {
                 if (minutes < 60) {
                     return `${minutes}m`;
@@ -3618,31 +3626,88 @@ Format your response as a simple numbered list, one step per line.`;
                                                                             }}>
                                                                                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
                                                                                     <div style={{flex: 1}}>
-                                                                                        <span>{task.title}</span>
+                                                                                        <span
+                                                                                            style={{
+                                                                                                cursor: 'pointer',
+                                                                                                borderBottom: '1px dashed transparent'
+                                                                                            }}
+                                                                                            onMouseEnter={(e) => e.target.style.borderBottomColor = '#9ca3af'}
+                                                                                            onMouseLeave={(e) => e.target.style.borderBottomColor = 'transparent'}
+                                                                                            onClick={() => {
+                                                                                                const newTitle = prompt('Edit task description:', task.title);
+                                                                                                if (newTitle !== null && newTitle.trim() !== '') {
+                                                                                                    updateCompletedTask(task.id, 'title', newTitle.trim());
+                                                                                                }
+                                                                                            }}
+                                                                                            title="Click to edit task description"
+                                                                                        >
+                                                                                            {task.title}
+                                                                                        </span>
                                                                                         <div style={{
                                                                                             fontSize: '12px',
                                                                                             color: '#6b7280',
                                                                                             marginTop: '2px'
                                                                                         }}>
-                                                                                            {dateStr}
+                                                                                            {dateStr} •
+                                                                                            <span
+                                                                                                style={{
+                                                                                                    cursor: 'pointer',
+                                                                                                    marginLeft: '4px',
+                                                                                                    borderBottom: '1px dashed transparent'
+                                                                                                }}
+                                                                                                onMouseEnter={(e) => e.target.style.borderBottomColor = '#9ca3af'}
+                                                                                                onMouseLeave={(e) => e.target.style.borderBottomColor = 'transparent'}
+                                                                                                onClick={() => {
+                                                                                                    const newClient = prompt('Edit client name:', task.client || 'Personal');
+                                                                                                    if (newClient !== null) {
+                                                                                                        updateCompletedTask(task.id, 'client', newClient.trim());
+                                                                                                    }
+                                                                                                }}
+                                                                                                title="Click to edit client"
+                                                                                            >
+                                                                                                {task.client || 'Personal'}
+                                                                                            </span>
                                                                                         </div>
                                                                                     </div>
-                                                                                    <span style={{fontWeight: 600, marginLeft: '12px'}}>
+                                                                                    <span
+                                                                                        style={{
+                                                                                            fontWeight: 600,
+                                                                                            marginLeft: '12px',
+                                                                                            cursor: 'pointer',
+                                                                                            borderBottom: '1px dashed transparent'
+                                                                                        }}
+                                                                                        onMouseEnter={(e) => e.target.style.borderBottomColor = '#9ca3af'}
+                                                                                        onMouseLeave={(e) => e.target.style.borderBottomColor = 'transparent'}
+                                                                                        onClick={() => {
+                                                                                            const newTime = prompt('Edit actual time (in hours, e.g., 0.25, 0.5, 1, 2):', task.actualTime);
+                                                                                            if (newTime !== null && !isNaN(newTime) && parseFloat(newTime) > 0) {
+                                                                                                updateCompletedTask(task.id, 'actualTime', newTime);
+                                                                                            }
+                                                                                        }}
+                                                                                        title="Click to edit time"
+                                                                                    >
                                                                                         {parseFloat(task.actualTime).toFixed(2)}h
                                                                                     </span>
                                                                                 </div>
-                                                                                {task.billable && (
-                                                                                    <span style={{
+                                                                                <span
+                                                                                    style={{
                                                                                         fontSize: '11px',
                                                                                         padding: '2px 6px',
                                                                                         borderRadius: '4px',
-                                                                                        background: '#d1fae5',
-                                                                                        color: '#065f46',
-                                                                                        fontWeight: 600
-                                                                                    }}>
-                                                                                    $ Billable
+                                                                                        background: task.billable ? '#d1fae5' : '#f3f4f6',
+                                                                                        color: task.billable ? '#065f46' : '#6b7280',
+                                                                                        fontWeight: 600,
+                                                                                        cursor: 'pointer',
+                                                                                        display: 'inline-block',
+                                                                                        marginTop: '4px'
+                                                                                    }}
+                                                                                    onClick={() => {
+                                                                                        updateCompletedTask(task.id, 'billable', !task.billable);
+                                                                                    }}
+                                                                                    title="Click to toggle billable status"
+                                                                                >
+                                                                                    {task.billable ? '$ Billable' : 'Non-billable'}
                                                                                 </span>
-                                                                            )}
                                                                         </div>
                                                                         );
                                                                     })}
