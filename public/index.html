@@ -2475,10 +2475,10 @@ Format your response as a simple numbered list, one step per line.`;
                                         title="Click to see your spoon breakdown"
                                     >
                                         <div className="text-3xl mb-1">
-                                            {'🥄 '.repeat(Math.min(10, dailyCapacity.remainingSpoons))}
+                                            {'🥄 '.repeat(Math.max(0, Math.min(10, dailyCapacity.remainingSpoons)))}
                                             {dailyCapacity.totalSpoons - dailyCapacity.remainingSpoons > 0 && (
                                                 <span className="opacity-30">
-                                                    {'🥄 '.repeat(Math.min(10, dailyCapacity.totalSpoons - dailyCapacity.remainingSpoons))}
+                                                    {'🥄 '.repeat(Math.max(0, Math.min(10, dailyCapacity.totalSpoons - dailyCapacity.remainingSpoons)))}
                                                 </span>
                                             )}
                                         </div>
