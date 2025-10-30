@@ -1132,6 +1132,16 @@
                 const task = tasks.find(t => t.id === taskId);
                 if (!task) return;
 
+                // Deduct spoons from daily capacity
+                if (dailyCapacity && dailyCapacity.totalSpoons > 0 && task.spoonsRequired) {
+                    const updatedCapacity = {
+                        ...dailyCapacity,
+                        remainingSpoons: Math.max(0, dailyCapacity.remainingSpoons - task.spoonsRequired)
+                    };
+                    setDailyCapacity(updatedCapacity);
+                    localStorage.setItem(`calm-neuro-check-${updatedCapacity.date}`, JSON.stringify(updatedCapacity));
+                }
+
                 // Create completed task with time data
                 const completedTask = {
                     ...task,
