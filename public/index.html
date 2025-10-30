@@ -2869,7 +2869,24 @@ Format your response as a simple numbered list, one step per line.`;
                                                                     {isExpanded ? '▼' : '▶'}
                                                                 </button>
                                                             )}
-                                                            <span>{task.title}</span>
+                                                            <span
+                                                                style={{
+                                                                    cursor: 'pointer',
+                                                                    borderBottom: '1px dashed transparent',
+                                                                    transition: 'border-color 0.2s'
+                                                                }}
+                                                                onMouseEnter={(e) => e.target.style.borderBottomColor = '#9ca3af'}
+                                                                onMouseLeave={(e) => e.target.style.borderBottomColor = 'transparent'}
+                                                                onClick={() => {
+                                                                    const newTitle = prompt('Edit task description:', task.title);
+                                                                    if (newTitle !== null && newTitle.trim() !== '') {
+                                                                        updateTaskAttribute(task.id, 'title', newTitle.trim());
+                                                                    }
+                                                                }}
+                                                                title="Click to edit task description"
+                                                            >
+                                                                {task.title}
+                                                            </span>
 
                                                             {/* SPOON COST BADGE */}
                                                             {(task.spoonsRequired || task.spoonsRequired === 0) && (
