@@ -2762,6 +2762,52 @@ Format your response as a simple numbered list, one step per line.`;
                                     )}
 
                                     {/* Time Summary for Today view */}
+                                    {/* SPOON CAPACITY WARNING */}
+                                    {currentView === 'today' && dailyCapacity.totalSpoons > 0 && (() => {
+                                        const totalSpoonsNeeded = filteredTasks.reduce((sum, task) => {
+                                            return sum + (task.spoonsRequired || 2);
+                                        }, 0);
+
+                                        const availableSpoons = dailyCapacity.remainingSpoons;
+                                        const isSpoonOvercommitted = totalSpoonsNeeded > availableSpoons;
+
+                                        if (totalSpoonsNeeded === 0) return null;
+
+                                        return (
+                                            <div style={{
+                                                background: isSpoonOvercommitted ? '#fee2e2' : '#e0e7ff',
+                                                padding: '15px',
+                                                borderRadius: '8px',
+                                                marginBottom: '15px',
+                                                border: `2px solid ${isSpoonOvercommitted ? '#ef4444' : '#667eea'}`
+                                            }}>
+                                                <div style={{fontSize: '14px', fontWeight: 600, marginBottom: '8px', color: '#111827'}}>
+                                                    🥄 Spoon Capacity Check
+                                                </div>
+                                                <div style={{fontSize: '14px', marginBottom: '5px'}}>
+                                                    <strong>Tasks in "Today":</strong> {totalSpoonsNeeded} spoons needed
+                                                </div>
+                                                <div style={{fontSize: '14px', marginBottom: '8px', color: availableSpoons > 0 ? '#059669' : '#991b1b'}}>
+                                                    <strong>Available spoons:</strong> {availableSpoons} spoons
+                                                </div>
+                                                {isSpoonOvercommitted && (
+                                                    <div style={{fontSize: '13px', color: '#991b1b', marginTop: '8px', padding: '8px', background: '#fef2f2', borderRadius: '4px'}}>
+                                                        ⚠️ <strong>ENERGY OVERLOAD!</strong> You need {totalSpoonsNeeded} spoons but only have {availableSpoons} available.
+                                                        You're {totalSpoonsNeeded - availableSpoons} spoons over capacity.
+                                                        <br/><br/>
+                                                        <strong>Options:</strong> Move some tasks to "This Week" or "Later", use Quick Spoon Boosters, or activate Override Mode if truly urgent.
+                                                    </div>
+                                                )}
+                                                {!isSpoonOvercommitted && totalSpoonsNeeded > 0 && (
+                                                    <div style={{fontSize: '13px', color: '#059669', marginTop: '8px'}}>
+                                                        ✓ Good planning - You have enough spoons for today's tasks ({availableSpoons - totalSpoonsNeeded} spoons remaining after).
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
+
+                                    {/* TIME CAPACITY WARNING */}
                                     {currentView === 'today' && (() => {
                                         const totalEstimated = filteredTasks.reduce((sum, task) => {
                                             return sum + (task.estimatedTime || 0);
@@ -2969,35 +3015,50 @@ Format your response as a simple numbered list, one step per line.`;
                                                                 </span>
                                                             )}
 
-                                                            {/* CLIENT BADGE */}
-                                                            {task.client && (
-                                                                <span style={{
+                                                            {/* CLIENT BADGE - Always show, always editable */}
+                                                            <span
+                                                                style={{
                                                                     marginLeft: '8px',
                                                                     fontSize: '11px',
                                                                     padding: '2px 6px',
                                                                     borderRadius: '4px',
-                                                                    background: '#e0e7ff',
-                                                                    color: '#3730a3',
-                                                                    fontWeight: 600
-                                                                }}>
-                                                                    {task.client}
-                                                                </span>
-                                                            )}
+                                                                    background: task.client ? '#e0e7ff' : '#f3f4f6',
+                                                                    color: task.client ? '#3730a3' : '#6b7280',
+                                                                    fontWeight: 600,
+                                                                    cursor: 'pointer',
+                                                                    border: '1px solid ' + (task.client ? '#c7d2fe' : '#e5e7eb')
+                                                                }}
+                                                                onClick={() => {
+                                                                    const newClient = prompt('Edit client name (leave empty for none):', task.client || '');
+                                                                    if (newClient !== null) {
+                                                                        updateTaskAttribute(task.id, 'client', newClient.trim());
+                                                                    }
+                                                                }}
+                                                                title="Click to edit client"
+                                                            >
+                                                                {task.client || 'No Client'}
+                                                            </span>
 
-                                                            {/* BILLABLE BADGE */}
-                                                            {task.billable && (
-                                                                <span style={{
+                                                            {/* BILLABLE BADGE - Always show, always toggleable */}
+                                                            <span
+                                                                style={{
                                                                     marginLeft: '6px',
                                                                     fontSize: '11px',
                                                                     padding: '2px 6px',
                                                                     borderRadius: '4px',
-                                                                    background: '#d1fae5',
-                                                                    color: '#065f46',
-                                                                    fontWeight: 700
-                                                                }}>
-                                                                    $ Billable
-                                                                </span>
-                                                            )}
+                                                                    background: task.billable ? '#d1fae5' : '#f3f4f6',
+                                                                    color: task.billable ? '#065f46' : '#6b7280',
+                                                                    fontWeight: 700,
+                                                                    cursor: 'pointer',
+                                                                    border: '1px solid ' + (task.billable ? '#a7f3d0' : '#e5e7eb')
+                                                                }}
+                                                                onClick={() => {
+                                                                    updateTaskAttribute(task.id, 'billable', !task.billable);
+                                                                }}
+                                                                title="Click to toggle billable status"
+                                                            >
+                                                                {task.billable ? '$ Billable' : 'Non-billable'}
+                                                            </span>
                                                         </div>
                                                         <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
                                                             <select
