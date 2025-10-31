@@ -1,0 +1,2928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calm Commander - AuDHD Edition</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: white;
+            padding: 25px 30px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .mode-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .mode-badge.coach {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .mode-badge.crisis {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .mode-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 10px 16px;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-btn.coach {
+            background: #22c55e;
+            color: white;
+        }
+
+        .mode-btn.coach:hover {
+            background: #16a34a;
+        }
+
+        .mode-btn.coach.active {
+            border-color: #065f46;
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.3);
+            transform: scale(1.02);
+        }
+
+        .mode-btn.crisis {
+            background: #ef4444;
+            color: white;
+        }
+
+        .mode-btn.crisis:hover {
+            background: #dc2626;
+        }
+
+        .mode-btn.crisis.active {
+            border-color: #991b1b;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3);
+            transform: scale(1.02);
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .setup-screen {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .setup-screen h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .setup-screen p {
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .info-box {
+            background: #f0f9ff;
+            border: 2px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #1e40af;
+            font-size: 14px;
+        }
+
+        .input-group {
+            margin: 20px 0;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .chat-container {
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 20px;
+            height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            line-height: 1.5;
+        }
+
+        .message.user {
+            background: #e0e7ff;
+            color: #1e1b4b;
+            margin-left: 20px;
+        }
+
+        .message.assistant {
+            background: white;
+            color: #333;
+            margin-right: 20px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .message.system {
+            background: #fef3c7;
+            color: #78350f;
+            text-align: center;
+            font-style: italic;
+            margin: 10px 40px;
+        }
+
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-area input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+
+        .input-area input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .input-area button {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .input-area button:hover {
+            background: #5568d3;
+        }
+
+        .input-area button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .tasks-section {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid #f0f0f0;
+        }
+
+        .tasks-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .task-category {
+            margin-bottom: 20px;
+        }
+
+        .task-category h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .task-list {
+            list-style: none;
+        }
+
+        .task-item {
+            padding: 10px 12px;
+            margin-bottom: 6px;
+            background: #f9fafb;
+            border-left: 4px solid;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .task-item.now {
+            border-left-color: #22c55e;
+        }
+
+        .task-item.soon {
+            border-left-color: #fbbf24;
+        }
+
+        .task-item.later {
+            border-left-color: #94a3b8;
+        }
+
+        .empty-state {
+            color: #9ca3af;
+            font-style: italic;
+            padding: 10px 12px;
+            font-size: 14px;
+        }
+
+        @media (max-width: 700px) {
+            body {
+                padding: 10px;
+            }
+
+            .header, .content {
+                padding: 20px;
+            }
+
+            .chat-container {
+                height: 300px;
+            }
+
+            .message.user {
+                margin-left: 10px;
+            }
+
+            .message.assistant {
+                margin-right: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // ============================================
+        // REUSABLE UI COMPONENTS
+        // ============================================
+
+        // Card Component
+        const Card = ({ children, className = '', ...props }) => (
+            <div className={`bg-white rounded-lg shadow-sm border border-gray-200 ${className}`} {...props}>
+                {children}
+            </div>
+        );
+
+        const CardHeader = ({ children, className = '' }) => (
+            <div className={`px-6 py-4 border-b border-gray-200 ${className}`}>
+                {children}
+            </div>
+        );
+
+        const CardContent = ({ children, className = '' }) => (
+            <div className={`px-6 py-4 ${className}`}>
+                {children}
+            </div>
+        );
+
+        // Badge Component
+        const Badge = ({ children, variant = 'default', className = '' }) => {
+            const variants = {
+                default: 'bg-gray-100 text-gray-700',
+                primary: 'bg-blue-100 text-blue-700',
+                success: 'bg-green-100 text-green-700',
+                warning: 'bg-yellow-100 text-yellow-700',
+                danger: 'bg-red-100 text-red-700',
+                purple: 'bg-purple-100 text-purple-700'
+            };
+
+            return (
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${variants[variant]} ${className}`}>
+                    {children}
+                </span>
+            );
+        };
+
+        // Button Component
+        const Button = ({ children, variant = 'default', size = 'md', className = '', ...props }) => {
+            const variants = {
+                default: 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50',
+                primary: 'bg-blue-500 text-white hover:bg-blue-600',
+                success: 'bg-green-500 text-white hover:bg-green-600',
+                danger: 'bg-red-500 text-white hover:bg-red-600',
+                ghost: 'bg-transparent hover:bg-gray-100'
+            };
+
+            const sizes = {
+                sm: 'px-3 py-1.5 text-sm',
+                md: 'px-4 py-2 text-base',
+                lg: 'px-6 py-3 text-lg'
+            };
+
+            return (
+                <button
+                    className={`rounded-lg font-medium transition-colors ${variants[variant]} ${sizes[size]} ${className}`}
+                    {...props}
+                >
+                    {children}
+                </button>
+            );
+        };
+
+        // Modal Component
+        const Modal = ({ isOpen, onClose, children, title }) => {
+            if (!isOpen) return null;
+
+            return (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    style={{ background: 'rgba(0, 0, 0, 0.5)' }}
+                    onClick={onClose}
+                >
+                    <div
+                        className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {title && (
+                            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                                <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+                                <button
+                                    onClick={onClose}
+                                    className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+                                >
+                                    ×
+                                </button>
+                            </div>
+                        )}
+                        <div className="px-6 py-4">
+                            {children}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // ============================================
+        // END REUSABLE COMPONENTS
+        // ============================================
+
+        // Crisis keywords for auto-detection
+        const CRISIS_KEYWORDS = [
+            "overwhelmed", "frozen", "shutdown", "too much", "crisis",
+            "can't do this", "help", "drowning", "stuck"
+        ];
+
+        function App() {
+            const [apiKey, setApiKey] = useState('');
+            const [isSetup, setIsSetup] = useState(false);
+            const [messages, setMessages] = useState([]);
+            const [tasks, setTasks] = useState([]);
+            const [completedTasks, setCompletedTasks] = useState([]);
+            const [currentMode, setCurrentMode] = useState('coach');
+            const [currentView, setCurrentView] = useState('today');
+            const [inputMessage, setInputMessage] = useState('');
+            const [isLoading, setIsLoading] = useState(false);
+            const [dailyEnergy, setDailyEnergy] = useState(null);
+            const [calendarInput, setCalendarInput] = useState('');
+            const [showCompleteModal, setShowCompleteModal] = useState(false);
+            const [taskToComplete, setTaskToComplete] = useState(null);
+            const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
+            const [bulkUploadText, setBulkUploadText] = useState('');
+            const [bulkUploadClient, setBulkUploadClient] = useState('');
+            const [bulkUploadBillable, setBulkUploadBillable] = useState(false);
+            const [showBreakdownModal, setShowBreakdownModal] = useState(false);
+            const [taskToBreakdown, setTaskToBreakdown] = useState(null);
+            const [breakdownSubtasks, setBreakdownSubtasks] = useState([]);
+            const [isBreakingDown, setIsBreakingDown] = useState(false);
+            const [showBillingView, setShowBillingView] = useState(false);
+            const [expandedParents, setExpandedParents] = useState({});
+            const [showEstimateModal, setShowEstimateModal] = useState(false);
+            const [pendingTask, setPendingTask] = useState(null);
+            const [showAddTask, setShowAddTask] = useState(false);
+            const [billingMonth, setBillingMonth] = useState(() => {
+                const now = new Date();
+                return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            });
+
+            // New Task Form State
+            const [newTaskTitle, setNewTaskTitle] = useState('');
+            const [newTaskCategory, setNewTaskCategory] = useState('');
+            const [newTaskUrgency, setNewTaskUrgency] = useState('normal');
+            const [newTaskSpoons, setNewTaskSpoons] = useState('medium');
+            const [newTaskFocus, setNewTaskFocus] = useState('medium');
+            const [newTaskView, setNewTaskView] = useState('later');
+            const [newTaskStatus, setNewTaskStatus] = useState('active');
+            const [newTaskWaitingFor, setNewTaskWaitingFor] = useState('');
+            const [newTaskDueDate, setNewTaskDueDate] = useState('');
+            const [newTaskClient, setNewTaskClient] = useState('');
+            const [newTaskBillable, setNewTaskBillable] = useState(false);
+            const [newTaskEstimate, setNewTaskEstimate] = useState(null);
+            const [categories, setCategories] = useState([]);
+            const chatEndRef = useRef(null);
+
+            // Load from localStorage on mount
+            useEffect(() => {
+                const savedKey = localStorage.getItem('calmCommanderApiKey');
+                const savedMessages = localStorage.getItem('calmCommanderMessages');
+                const savedTasks = localStorage.getItem('calmCommanderTasks');
+                const savedMode = localStorage.getItem('calmCommanderMode');
+                const savedEnergy = localStorage.getItem('ccDailyEnergy');
+                const savedCompleted = localStorage.getItem('ccCompletedTasks');
+                const savedCalendar = localStorage.getItem('ccCalendarInput');
+
+                if (savedKey) {
+                    setApiKey(savedKey);
+                    setIsSetup(true);
+                }
+                if (savedMessages) {
+                    setMessages(JSON.parse(savedMessages));
+                }
+                if (savedTasks) {
+                    try {
+                        const parsed = JSON.parse(savedTasks);
+                        // Ensure it's an array
+                        if (Array.isArray(parsed)) {
+                            // Migrate old tasks to new structure
+                            const migratedTasks = parsed.map(task => ({
+                                ...task,
+                                // Rename energyRequired to spoonsRequired (migration)
+                                spoonsRequired: task.spoonsRequired || task.energyRequired || 'medium',
+                                // Add new fields with defaults if missing
+                                urgency: task.urgency || 'normal',
+                                focusLevel: task.focusLevel || 'medium',
+                                waitingFor: task.waitingFor || '',
+                                dueDate: task.dueDate || null,
+                                priority: task.priority || 0,
+                                // Remove old field
+                                energyRequired: undefined
+                            }));
+                            setTasks(migratedTasks);
+                            // Save migrated tasks
+                            localStorage.setItem('calmCommanderTasks', JSON.stringify(migratedTasks));
+                        } else {
+                            setTasks([]);
+                            localStorage.removeItem('calmCommanderTasks');
+                        }
+                    } catch (e) {
+                        setTasks([]);
+                        localStorage.removeItem('calmCommanderTasks');
+                    }
+                }
+                if (savedMode) {
+                    setCurrentMode(savedMode);
+                }
+                if (savedEnergy) {
+                    const energy = JSON.parse(savedEnergy);
+                    // Check if it's today's energy
+                    if (energy.date === new Date().toDateString()) {
+                        setDailyEnergy(energy);
+                    }
+                }
+                if (savedCompleted) {
+                    try {
+                        const parsed = JSON.parse(savedCompleted);
+                        if (Array.isArray(parsed)) {
+                            // Migrate completed tasks too
+                            const migratedCompleted = parsed.map(task => ({
+                                ...task,
+                                spoonsRequired: task.spoonsRequired || task.energyRequired || 'medium',
+                                urgency: task.urgency || 'normal',
+                                focusLevel: task.focusLevel || 'medium',
+                                waitingFor: task.waitingFor || '',
+                                dueDate: task.dueDate || null,
+                                priority: task.priority || 0,
+                                energyRequired: undefined
+                            }));
+                            setCompletedTasks(migratedCompleted);
+                            localStorage.setItem('ccCompletedTasks', JSON.stringify(migratedCompleted));
+                        }
+                    } catch (e) {
+                        setCompletedTasks([]);
+                    }
+                }
+                if (savedCalendar) {
+                    const calendar = JSON.parse(savedCalendar);
+                    // Check if it's today's calendar
+                    if (calendar.date === new Date().toDateString()) {
+                        setCalendarInput(calendar.input);
+                    }
+                }
+
+                // Initialize default categories if not present
+                const savedCategories = localStorage.getItem('ccCategories');
+                if (!savedCategories) {
+                    const defaultCategories = [
+                        { id: 'work', name: 'Work', icon: '🏢', color: '#4A90E2' },
+                        { id: 'personal', name: 'Personal', icon: '🏠', color: '#7ED321' },
+                        { id: 'health', name: 'Health', icon: '💚', color: '#50E3C2' },
+                        { id: 'finance', name: 'Finance', icon: '💰', color: '#F5A623' },
+                        { id: 'learning', name: 'Learning', icon: '📚', color: '#BD10E0' },
+                        { id: 'social', name: 'Social', icon: '👥', color: '#B8E986' },
+                        { id: 'creative', name: 'Creative', icon: '🎨', color: '#FF6B9D' },
+                        { id: 'household', name: 'Household', icon: '🏡', color: '#8B572A' }
+                    ];
+                    localStorage.setItem('ccCategories', JSON.stringify(defaultCategories));
+                    setCategories(defaultCategories);
+                } else {
+                    setCategories(JSON.parse(savedCategories));
+                }
+
+                // Add welcome message if first time
+                if (!savedMessages && savedKey) {
+                    const welcomeMsg = {
+                        role: 'assistant',
+                        content: "Hi there. I'm here to help you feel calmer and more clear. Let's take this one step at a time. What's on your mind right now?"
+                    };
+                    setMessages([welcomeMsg]);
+                    localStorage.setItem('calmCommanderMessages', JSON.stringify([welcomeMsg]));
+                }
+            }, []);
+
+            // Auto-scroll chat only when new messages are added
+            const prevMessageCount = useRef(0);
+            useEffect(() => {
+                // Only scroll if message count actually increased
+                if (messages.length > prevMessageCount.current) {
+                    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                    prevMessageCount.current = messages.length;
+                } else {
+                    prevMessageCount.current = messages.length;
+                }
+            }, [messages]);
+
+            // Save calendar input to localStorage when it changes
+            useEffect(() => {
+                if (calendarInput !== '') {
+                    const calendar = {
+                        date: new Date().toDateString(),
+                        input: calendarInput
+                    };
+                    localStorage.setItem('ccCalendarInput', JSON.stringify(calendar));
+                }
+            }, [calendarInput]);
+
+            const handleSetup = () => {
+                if (apiKey.trim()) {
+                    localStorage.setItem('calmCommanderApiKey', apiKey);
+                    setIsSetup(true);
+
+                    const welcomeMsg = {
+                        role: 'assistant',
+                        content: "Hi there. I'm here to help you feel calmer and more clear. Let's take this one step at a time. What's on your mind right now?"
+                    };
+                    setMessages([welcomeMsg]);
+                    localStorage.setItem('calmCommanderMessages', JSON.stringify([welcomeMsg]));
+                }
+            };
+
+            // Task management functions
+            const addTask = (title, category = 'Uncategorized', spoonsRequired = 'medium', view = 'later', client = '', billable = false, estimatedTime = null, urgency = 'normal', focusLevel = 'medium', waitingFor = '', dueDate = null) => {
+                const newTask = {
+                    id: Date.now(),
+                    title: title,
+                    category: category,
+                    spoonsRequired: spoonsRequired,
+                    view: view,
+                    client: client,
+                    billable: billable,
+                    estimatedTime: estimatedTime,
+                    urgency: urgency,  // 'critical' | 'important' | 'normal' | 'low'
+                    focusLevel: focusLevel,  // 'high' | 'medium' | 'low'
+                    waitingFor: waitingFor,  // String for 'waiting' status
+                    dueDate: dueDate,  // ISO date string or null
+                    priority: 0,  // Calculated later
+                    status: 'active',  // 'active' | 'waiting' | 'blocked' | 'completed'
+                    createdDate: Date.now()
+                };
+                // Ensure tasks is always an array
+                const currentTasks = Array.isArray(tasks) ? tasks : [];
+                const updatedTasks = [...currentTasks, newTask];
+                setTasks(updatedTasks);
+                localStorage.setItem('calmCommanderTasks', JSON.stringify(updatedTasks));
+            };
+
+            const deleteTask = (taskId) => {
+                const updatedTasks = tasks.filter(t => t.id !== taskId);
+                setTasks(updatedTasks);
+                localStorage.setItem('calmCommanderTasks', JSON.stringify(updatedTasks));
+            };
+
+            const moveTask = (taskId, newView) => {
+                const updatedTasks = tasks.map(t =>
+                    t.id === taskId ? { ...t, view: newView } : t
+                );
+                setTasks(updatedTasks);
+                localStorage.setItem('calmCommanderTasks', JSON.stringify(updatedTasks));
+            };
+
+            const completeTask = (taskId, actualTime) => {
+                const task = tasks.find(t => t.id === taskId);
+                if (!task) return;
+
+                // Create completed task with time data
+                const completedTask = {
+                    ...task,
+                    status: 'completed',
+                    completedDate: Date.now(),
+                    actualTime: actualTime
+                };
+
+                // Remove from active tasks
+                const updatedTasks = tasks.filter(t => t.id !== taskId);
+                setTasks(updatedTasks);
+                localStorage.setItem('calmCommanderTasks', JSON.stringify(updatedTasks));
+
+                // Add to completed tasks
+                const updatedCompleted = [...completedTasks, completedTask];
+                setCompletedTasks(updatedCompleted);
+                localStorage.setItem('ccCompletedTasks', JSON.stringify(updatedCompleted));
+
+                // Close modal
+                setShowCompleteModal(false);
+                setTaskToComplete(null);
+            };
+
+            const setEnergy = (level) => {
+                const energy = {
+                    date: new Date().toDateString(),
+                    level: level,
+                    timestamp: Date.now()
+                };
+                setDailyEnergy(energy);
+                localStorage.setItem('ccDailyEnergy', JSON.stringify(energy));
+            };
+
+            // Handle new task form submission
+            const handleNewTaskSubmit = () => {
+                if (!newTaskTitle.trim()) {
+                    alert('Please enter a task title');
+                    return;
+                }
+
+                // Add the task with all metadata
+                addTask(
+                    newTaskTitle.trim(),
+                    newTaskCategory || 'Uncategorized',
+                    newTaskSpoons,
+                    newTaskView,
+                    newTaskClient.trim(),
+                    newTaskBillable,
+                    newTaskEstimate,
+                    newTaskUrgency,
+                    newTaskFocus,
+                    newTaskWaitingFor.trim(),
+                    newTaskDueDate || null
+                );
+
+                // Reset form
+                setNewTaskTitle('');
+                setNewTaskCategory('');
+                setNewTaskUrgency('normal');
+                setNewTaskSpoons('medium');
+                setNewTaskFocus('medium');
+                setNewTaskView('later');
+                setNewTaskStatus('active');
+                setNewTaskWaitingFor('');
+                setNewTaskDueDate('');
+                setNewTaskClient('');
+                setNewTaskBillable(false);
+                setNewTaskEstimate(null);
+                setShowAddTask(false);
+            };
+
+            const handleBulkUpload = () => {
+                if (!bulkUploadText.trim()) return;
+
+                // Parse text into individual tasks
+                const lines = bulkUploadText.split('\n');
+                const newTasks = [];
+
+                lines.forEach(line => {
+                    const trimmed = line.trim();
+                    // Skip empty lines and very short entries
+                    if (trimmed && trimmed.length > 2) {
+                        // Remove common prefixes like bullets, numbers, checkboxes
+                        let taskText = trimmed
+                            .replace(/^[-•*]\s*/, '')  // Remove bullet points
+                            .replace(/^\d+[\.)]\s*/, '')  // Remove numbered lists
+                            .replace(/^[\[\(]?\s*[xX\s]?\s*[\]\)]?\s*/, '')  // Remove checkboxes
+                            .trim();
+
+                        if (taskText && taskText.length > 2) {
+                            newTasks.push({
+                                id: Date.now() + Math.random(),
+                                title: taskText,
+                                category: 'Bulk Upload',
+                                spoonsRequired: 'medium',
+                                view: 'later',  // Brain dump location
+                                client: bulkUploadClient.trim(),
+                                billable: bulkUploadBillable,
+                                urgency: 'normal',
+                                focusLevel: 'medium',
+                                waitingFor: '',
+                                dueDate: null,
+                                priority: 0,
+                                status: 'active',
+                                createdDate: Date.now()
+                            });
+                        }
+                    }
+                });
+
+                if (newTasks.length > 0) {
+                    const currentTasks = Array.isArray(tasks) ? tasks : [];
+                    const updatedTasks = [...currentTasks, ...newTasks];
+                    setTasks(updatedTasks);
+                    localStorage.setItem('calmCommanderTasks', JSON.stringify(updatedTasks));
+
+                    // Close modal and reset
+                    setShowBulkUploadModal(false);
+                    setBulkUploadText('');
+                    setBulkUploadClient('');
+                    setBulkUploadBillable(false);
+                }
+            };
+
+            const handleBreakdownTask = async (task) => {
+                setTaskToBreakdown(task);
+                setShowBreakdownModal(true);
+                setIsBreakingDown(true);
+                setBreakdownSubtasks([]);
+
+                try {
+                    const breakdownPrompt = `I have a task that feels overwhelming: "${task.title}"
+
+Please break this down into 3-5 smaller, concrete steps that I can do one at a time. Make each step:
+- Specific and actionable
+- Small enough to complete in one sitting
+- Clear about what "done" looks like
+
+Format your response as a simple numbered list, one step per line.`;
+
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            message: breakdownPrompt,
+                            mode: 'coach',
+                            apiKey: apiKey
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        // Parse the AI response to extract subtasks
+                        const lines = data.response.split('\n');
+                        const subtasks = [];
+
+                        lines.forEach(line => {
+                            const trimmed = line.trim();
+                            // Match numbered lists like "1. ", "1) ", or bullet points
+                            const match = trimmed.match(/^(?:\d+[\.)]\s*|[-•*]\s*)(.+)$/);
+                            if (match && match[1] && match[1].length > 3) {
+                                subtasks.push(match[1].trim());
+                            }
+                        });
+
+                        setBreakdownSubtasks(subtasks);
+                    } else {
+                        setBreakdownSubtasks(['Error: Could not get breakdown from AI']);
+                    }
+                } catch (error) {
+                    setBreakdownSubtasks(['Error: Failed to connect to AI']);
+                }
+
+                setIsBreakingDown(false);
+            };
+
+            const addSubtasksToList = () => {
+                if (breakdownSubtasks.length === 0 || !taskToBreakdown) return;
+
+                // Mark parent task as having subtasks
+                const updatedParent = {
+                    ...taskToBreakdown,
+                    hasSubtasks: true,
+                    subtaskCount: breakdownSubtasks.length
+                };
+
+                // Add each subtask with link to parent
+                // If parent has estimate, divide it among subtasks
+                const subtaskEstimate = taskToBreakdown.estimatedTime
+                    ? taskToBreakdown.estimatedTime / breakdownSubtasks.length
+                    : null;
+
+                const newSubtasks = breakdownSubtasks.map((subtaskTitle, index) => ({
+                    id: Date.now() + Math.random() + index,
+                    title: subtaskTitle,
+                    category: taskToBreakdown.category || 'Uncategorized',
+                    spoonsRequired: taskToBreakdown.spoonsRequired || 'medium',
+                    view: taskToBreakdown.view || 'later',
+                    client: taskToBreakdown.client || '',
+                    billable: taskToBreakdown.billable || false,
+                    estimatedTime: subtaskEstimate,
+                    urgency: taskToBreakdown.urgency || 'normal',
+                    focusLevel: taskToBreakdown.focusLevel || 'medium',
+                    waitingFor: '',
+                    dueDate: taskToBreakdown.dueDate || null,
+                    priority: 0,
+                    parentTaskId: taskToBreakdown.id,
+                    status: 'active',
+                    createdDate: Date.now()
+                }));
+
+                // Update tasks: replace parent with updated parent, add all subtasks
+                const currentTasks = Array.isArray(tasks) ? tasks : [];
+                const updatedTasks = currentTasks.map(t =>
+                    t.id === taskToBreakdown.id ? updatedParent : t
+                ).concat(newSubtasks);
+
+                setTasks(updatedTasks);
+                localStorage.setItem('calmCommanderTasks', JSON.stringify(updatedTasks));
+
+                // Expand parent by default
+                setExpandedParents({...expandedParents, [taskToBreakdown.id]: true});
+
+                // Close modal
+                setShowBreakdownModal(false);
+                setTaskToBreakdown(null);
+                setBreakdownSubtasks([]);
+            };
+
+            const detectCrisisMode = (text) => {
+                const lowerText = text.toLowerCase();
+                return CRISIS_KEYWORDS.some(keyword => lowerText.includes(keyword));
+            };
+
+            const parseCalendarInput = (input) => {
+                if (!input || !input.trim()) return 0;
+
+                let totalBusyHours = 0;
+                const text = input.toLowerCase();
+
+                // Match explicit hours like "3 hours", "3 hrs", "3h"
+                const explicitHoursMatch = text.match(/(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\s+(?:in|of|for)?\s*(?:meetings?|calls?)?/gi);
+                if (explicitHoursMatch) {
+                    explicitHoursMatch.forEach(match => {
+                        const hours = parseFloat(match.match(/(\d+(?:\.\d+)?)/)[1]);
+                        totalBusyHours += hours;
+                    });
+                }
+
+                // Match time ranges like "2-3pm", "9:30-11am", "2pm-4pm"
+                const timeRangeRegex = /(\d{1,2})(?::(\d{2}))?\s*(?:am|pm)?\s*[-–]\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)/gi;
+                const timeRanges = text.matchAll(timeRangeRegex);
+
+                for (const match of timeRanges) {
+                    let startHour = parseInt(match[1]);
+                    const startMin = match[2] ? parseInt(match[2]) : 0;
+                    let endHour = parseInt(match[3]);
+                    const endMin = match[4] ? parseInt(match[4]) : 0;
+                    const period = match[5];
+
+                    // Convert to 24-hour format
+                    if (period === 'pm' && endHour !== 12) endHour += 12;
+                    if (period === 'am' && endHour === 12) endHour = 0;
+                    if (period === 'pm' && startHour < 12 && startHour < endHour - 12) startHour += 12;
+                    if (period === 'am' && startHour === 12) startHour = 0;
+
+                    const durationHours = (endHour + endMin / 60) - (startHour + startMin / 60);
+                    if (durationHours > 0 && durationHours < 12) {
+                        totalBusyHours += durationHours;
+                    }
+                }
+
+                // Match individual hour mentions like "2pm", "3:30pm" (count as 1 hour each)
+                if (totalBusyHours === 0) {
+                    const singleTimes = text.match(/(?:^|[,;])\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)/gi);
+                    if (singleTimes) {
+                        totalBusyHours = singleTimes.length * 1; // Assume 1 hour per meeting mentioned
+                    }
+                }
+
+                return Math.min(totalBusyHours, 16); // Cap at 16 hours to avoid nonsense
+            };
+
+            const parseTasks = (responseText) => {
+                // Simple task parsing for Step 1
+                // Just extract tasks that AI mentions with emoji markers
+                const lines = responseText.split('\n');
+                const foundTasks = [];
+
+                lines.forEach(line => {
+                    const trimmed = line.trim();
+                    if (!trimmed) return;
+
+                    // Look for task markers
+                    if (trimmed.startsWith('✅') || trimmed.startsWith('⏳') || trimmed.startsWith('📅')) {
+                        const taskText = trimmed.replace(/^[✅⏳📅💬]\s*/, '').replace(/now:|soon:|later:|do now:|delay:|ask for help:/i, '').trim();
+                        if (taskText && taskText.length > 3) {
+                            foundTasks.push(taskText);
+                        }
+                    }
+                });
+
+                // Add found tasks to master list
+                if (foundTasks.length > 0) {
+                    const newTaskObjects = foundTasks.map(taskText => ({
+                        id: Date.now() + Math.random(),
+                        title: taskText,
+                        category: 'From AI',
+                        status: 'active',
+                        createdDate: Date.now()
+                    }));
+                    const updatedTasks = [...tasks, ...newTaskObjects];
+                    setTasks(updatedTasks);
+                    localStorage.setItem('calmCommanderTasks', JSON.stringify(updatedTasks));
+                }
+            };
+
+            const switchMode = (newMode, isAuto = false) => {
+                if (newMode !== currentMode) {
+                    setCurrentMode(newMode);
+                    localStorage.setItem('calmCommanderMode', newMode);
+
+                    const modeMsg = {
+                        role: 'system',
+                        content: isAuto
+                            ? `Switching to ${newMode} mode. I'm here...`
+                            : `Switched to ${newMode} mode.`
+                    };
+                    const updatedMessages = [...messages, modeMsg];
+                    setMessages(updatedMessages);
+                    localStorage.setItem('calmCommanderMessages', JSON.stringify(updatedMessages));
+                }
+            };
+
+            const sendMessage = async () => {
+                if (!inputMessage.trim() || isLoading) return;
+
+                const userMsg = { role: 'user', content: inputMessage };
+                const updatedMessages = [...messages, userMsg];
+                setMessages(updatedMessages);
+                localStorage.setItem('calmCommanderMessages', JSON.stringify(updatedMessages));
+
+                // Check for manual mode switch requests
+                const lowerInput = inputMessage.toLowerCase();
+                if (lowerInput.includes('back to normal mode') || lowerInput.includes('coach mode')) {
+                    switchMode('coach');
+                } else if (detectCrisisMode(inputMessage)) {
+                    switchMode('crisis', true);
+                }
+
+                setInputMessage('');
+                setIsLoading(true);
+
+                // Build context about current tasks and state
+                let context = '';
+
+                // Add energy level if set today
+                if (dailyEnergy && dailyEnergy.level) {
+                    context += `\n\nCurrent energy level: ${dailyEnergy.level}\n`;
+                }
+
+                // Add calendar info if entered
+                if (calendarInput && calendarInput.trim()) {
+                    const busyHours = parseCalendarInput(calendarInput);
+                    context += `\nCalendar today: ${calendarInput} (${busyHours.toFixed(1)}h in meetings/calls)\n`;
+                }
+
+                // Add active tasks grouped by view
+                const activeTasks = tasks.filter(t => !completedTasks.some(ct => ct.id === t.id));
+
+                if (activeTasks.length > 0) {
+                    context += `\n--- CURRENT TASK LIST (${activeTasks.length} tasks) ---\n`;
+
+                    const todayTasks = activeTasks.filter(t => t.view === 'today');
+                    const thisWeekTasks = activeTasks.filter(t => t.view === 'this-week');
+                    const nextWeekTasks = activeTasks.filter(t => t.view === 'next-week');
+                    const thisMonthTasks = activeTasks.filter(t => t.view === 'this-month');
+                    const laterTasks = activeTasks.filter(t => t.view === 'later');
+
+                    if (todayTasks.length > 0) {
+                        context += `\n🔥 Today (${todayTasks.length}):\n`;
+                        todayTasks.forEach(t => {
+                            let taskLine = `- ${t.title}`;
+                            if (t.estimatedTime) taskLine += ` [est: ${t.estimatedTime}h]`;
+                            if (t.spoonsRequired) taskLine += ` (${t.spoonsRequired} spoons)`;
+                            if (t.client) taskLine += ` [${t.client}]`;
+                            context += taskLine + '\n';
+                        });
+                    }
+
+                    if (thisWeekTasks.length > 0) {
+                        context += `\n📅 This Week (${thisWeekTasks.length}):\n`;
+                        thisWeekTasks.forEach(t => {
+                            let taskLine = `- ${t.title}`;
+                            if (t.estimatedTime) taskLine += ` [est: ${t.estimatedTime}h]`;
+                            if (t.spoonsRequired) taskLine += ` (${t.spoonsRequired} spoons)`;
+                            if (t.client) taskLine += ` [${t.client}]`;
+                            context += taskLine + '\n';
+                        });
+                    }
+
+                    if (nextWeekTasks.length > 0) {
+                        context += `\n📆 Next Week (${nextWeekTasks.length}):\n`;
+                        nextWeekTasks.forEach(t => {
+                            let taskLine = `- ${t.title}`;
+                            if (t.estimatedTime) taskLine += ` [est: ${t.estimatedTime}h]`;
+                            if (t.spoonsRequired) taskLine += ` (${t.spoonsRequired} spoons)`;
+                            if (t.client) taskLine += ` [${t.client}]`;
+                            context += taskLine + '\n';
+                        });
+                    }
+
+                    if (thisMonthTasks.length > 0) {
+                        context += `\n🗓️ This Month (${thisMonthTasks.length}):\n`;
+                        thisMonthTasks.forEach(t => {
+                            let taskLine = `- ${t.title}`;
+                            if (t.estimatedTime) taskLine += ` [est: ${t.estimatedTime}h]`;
+                            if (t.spoonsRequired) taskLine += ` (${t.spoonsRequired} spoons)`;
+                            if (t.client) taskLine += ` [${t.client}]`;
+                            context += taskLine + '\n';
+                        });
+                    }
+
+                    if (laterTasks.length > 0) {
+                        context += `\n🌊 Later (${laterTasks.length}):\n`;
+                        laterTasks.forEach(t => {
+                            let taskLine = `- ${t.title}`;
+                            if (t.estimatedTime) taskLine += ` [est: ${t.estimatedTime}h]`;
+                            if (t.spoonsRequired) taskLine += ` (${t.spoonsRequired} spoons)`;
+                            context += taskLine + '\n';
+                        });
+                    }
+                    context += '--- END TASK LIST ---\n';
+                }
+
+                // Combine user message with context
+                const messageWithContext = inputMessage + context;
+
+                try {
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            message: messageWithContext,
+                            mode: currentMode,
+                            apiKey: apiKey
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        const assistantMsg = { role: 'assistant', content: data.response };
+                        const finalMessages = [...updatedMessages, assistantMsg];
+                        setMessages(finalMessages);
+                        localStorage.setItem('calmCommanderMessages', JSON.stringify(finalMessages));
+
+                        // Parse tasks from response
+                        parseTasks(data.response);
+                    } else {
+                        const errorMsg = {
+                            role: 'system',
+                            content: `Error: ${data.error || 'Failed to get response'}`
+                        };
+                        const finalMessages = [...updatedMessages, errorMsg];
+                        setMessages(finalMessages);
+                        localStorage.setItem('calmCommanderMessages', JSON.stringify(finalMessages));
+                    }
+                } catch (error) {
+                    const errorMsg = {
+                        role: 'system',
+                        content: 'Connection error. Please check your internet and try again.'
+                    };
+                    const finalMessages = [...updatedMessages, errorMsg];
+                    setMessages(finalMessages);
+                    localStorage.setItem('calmCommanderMessages', JSON.stringify(finalMessages));
+                }
+
+                setIsLoading(false);
+            };
+
+            const handleKeyPress = (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            };
+
+            if (!isSetup) {
+                return (
+                    <div className="container">
+                        <div className="header">
+                            <h1>Calm Commander</h1>
+                        </div>
+                        <div className="content">
+                            <div className="setup-screen">
+                                <h2>Welcome to Calm Commander</h2>
+                                <p>An AI coach designed specifically for people with ADHD and autism.</p>
+
+                                <div className="info-box">
+                                    Get your API key at console.anthropic.com. It stays private on your device.
+                                </div>
+
+                                <div className="input-group">
+                                    <label htmlFor="apiKey">Anthropic API Key</label>
+                                    <input
+                                        id="apiKey"
+                                        type="password"
+                                        value={apiKey}
+                                        onChange={(e) => setApiKey(e.target.value)}
+                                        placeholder="sk-ant-..."
+                                        onKeyPress={(e) => e.key === 'Enter' && handleSetup()}
+                                    />
+                                </div>
+
+                                <button className="btn-primary" onClick={handleSetup}>
+                                    Start Using Calm Commander
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="container">
+                    <div className="header">
+                        <h1>Calm Commander</h1>
+                        <div className={`mode-badge ${currentMode}`}>
+                            {currentMode === 'coach' ? '🧘 Coach Mode' : '🚨 Crisis Mode'}
+                        </div>
+                        <div className="mode-buttons">
+                            <button
+                                className={`mode-btn coach ${currentMode === 'coach' ? 'active' : ''}`}
+                                onClick={() => switchMode('coach')}
+                            >
+                                Coach Mode
+                            </button>
+                            <button
+                                className={`mode-btn crisis ${currentMode === 'crisis' ? 'active' : ''}`}
+                                onClick={() => switchMode('crisis')}
+                            >
+                                Crisis Mode
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="content">
+                        {/* Energy Check-in Panel */}
+                        <div style={{
+                            background: '#f9fafb',
+                            border: '2px solid #e5e7eb',
+                            borderRadius: '8px',
+                            padding: '20px',
+                            marginBottom: '20px'
+                        }}>
+                            {!dailyEnergy ? (
+                                <div>
+                                    <h3 style={{fontSize: '16px', marginBottom: '12px', color: '#333'}}>
+                                        What's your energy level today?
+                                    </h3>
+                                    <div style={{display: 'flex', gap: '10px'}}>
+                                        <button
+                                            onClick={() => setEnergy('low')}
+                                            style={{
+                                                flex: 1,
+                                                padding: '10px',
+                                                border: '2px solid #e5e7eb',
+                                                borderRadius: '8px',
+                                                background: 'white',
+                                                cursor: 'pointer',
+                                                fontWeight: 600
+                                            }}
+                                        >
+                                            Low
+                                        </button>
+                                        <button
+                                            onClick={() => setEnergy('medium')}
+                                            style={{
+                                                flex: 1,
+                                                padding: '10px',
+                                                border: '2px solid #e5e7eb',
+                                                borderRadius: '8px',
+                                                background: 'white',
+                                                cursor: 'pointer',
+                                                fontWeight: 600
+                                            }}
+                                        >
+                                            Medium
+                                        </button>
+                                        <button
+                                            onClick={() => setEnergy('high')}
+                                            style={{
+                                                flex: 1,
+                                                padding: '10px',
+                                                border: '2px solid #e5e7eb',
+                                                borderRadius: '8px',
+                                                background: 'white',
+                                                cursor: 'pointer',
+                                                fontWeight: 600
+                                            }}
+                                        >
+                                            High
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div>
+                                    <h3 style={{fontSize: '16px', marginBottom: '12px', color: '#333'}}>
+                                        Today's Energy: <span style={{textTransform: 'capitalize', fontWeight: 'bold'}}>{dailyEnergy.level}</span>
+                                    </h3>
+                                    <button
+                                        onClick={() => {
+                                            setDailyEnergy(null);
+                                            localStorage.removeItem('ccDailyEnergy');
+                                        }}
+                                        style={{
+                                            padding: '8px 16px',
+                                            background: '#6b7280',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '6px',
+                                            cursor: 'pointer',
+                                            fontSize: '14px',
+                                            fontWeight: 600
+                                        }}
+                                    >
+                                        Update Energy
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Calendar Input */}
+                        <div style={{
+                            background: '#f9fafb',
+                            border: '2px solid #e5e7eb',
+                            borderRadius: '8px',
+                            padding: '20px',
+                            marginBottom: '20px'
+                        }}>
+                            <h3 style={{fontSize: '16px', marginBottom: '12px', color: '#333'}}>
+                                What's on your calendar today?
+                            </h3>
+                            <input
+                                type="text"
+                                value={calendarInput}
+                                onChange={(e) => setCalendarInput(e.target.value)}
+                                placeholder="e.g., Client call 2-3pm, team meeting 4pm, or '3 hours in meetings'"
+                                style={{
+                                    width: '100%',
+                                    padding: '10px 12px',
+                                    borderRadius: '6px',
+                                    border: '2px solid #e5e7eb',
+                                    fontSize: '14px'
+                                }}
+                            />
+                            <p style={{fontSize: '12px', color: '#6b7280', marginTop: '8px'}}>
+                                This helps calculate your available work time
+                            </p>
+                        </div>
+
+                        {/* Quick Action Buttons */}
+                        <div style={{marginBottom: '20px', display: 'flex', gap: '10px'}}>
+                            <button
+                                onClick={() => setShowBulkUploadModal(true)}
+                                style={{
+                                    flex: 1,
+                                    padding: '10px 16px',
+                                    background: '#667eea',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontSize: '14px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                📋 Bulk Upload
+                            </button>
+                            <button
+                                onClick={() => setShowBillingView(true)}
+                                style={{
+                                    flex: 1,
+                                    padding: '10px 16px',
+                                    background: '#10b981',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontSize: '14px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                💰 View Billing
+                            </button>
+                        </div>
+
+                        {/* Quick Add Task Buttons - Collapsible */}
+                        <div style={{marginBottom: '20px'}}>
+                            <button
+                                onClick={() => setShowAddTask(!showAddTask)}
+                                style={{
+                                    width: '100%',
+                                    padding: '12px',
+                                    background: showAddTask ? '#e0e7ff' : '#f3f4f6',
+                                    border: '2px solid ' + (showAddTask ? '#667eea' : '#d1d5db'),
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    fontWeight: 600,
+                                    fontSize: '14px',
+                                    color: '#333',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    marginBottom: showAddTask ? '12px' : '0'
+                                }}
+                            >
+                                <span>+ Add Task</span>
+                                <span style={{fontSize: '18px'}}>{showAddTask ? '▼' : '▶'}</span>
+                            </button>
+
+                            {showAddTask && (
+                                <div style={{
+                                    padding: '16px',
+                                    background: '#f9fafb',
+                                    border: '2px solid #e5e7eb',
+                                    borderRadius: '8px'
+                                }}>
+                                    {/* Task Title */}
+                                    <div style={{marginBottom: '12px'}}>
+                                        <label style={{display: 'block', marginBottom: '4px', fontWeight: 600, fontSize: '13px'}}>
+                                            Task Name *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={newTaskTitle}
+                                            onChange={(e) => setNewTaskTitle(e.target.value)}
+                                            placeholder="e.g., Call client about proposal"
+                                            style={{
+                                                width: '100%',
+                                                padding: '8px 12px',
+                                                border: '2px solid #d1d5db',
+                                                borderRadius: '6px',
+                                                fontSize: '14px'
+                                            }}
+                                        />
+                                    </div>
+
+                                    {/* Row 1: Category, Urgency */}
+                                    <div style={{display: 'flex', gap: '12px', marginBottom: '12px'}}>
+                                        <div style={{flex: 1}}>
+                                            <label style={{display: 'block', marginBottom: '4px', fontWeight: 600, fontSize: '13px'}}>
+                                                Category
+                                            </label>
+                                            <select
+                                                value={newTaskCategory}
+                                                onChange={(e) => setNewTaskCategory(e.target.value)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '8px 12px',
+                                                    border: '2px solid #d1d5db',
+                                                    borderRadius: '6px',
+                                                    fontSize: '14px'
+                                                }}
+                                            >
+                                                <option value="">Uncategorized</option>
+                                                {categories.map(cat => (
+                                                    <option key={cat.id} value={cat.name}>{cat.icon} {cat.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div style={{flex: 1}}>
+                                            <label style={{display: 'block', marginBottom: '4px', fontWeight: 600, fontSize: '13px'}}>
+                                                Urgency
+                                            </label>
+                                            <select
+                                                value={newTaskUrgency}
+                                                onChange={(e) => setNewTaskUrgency(e.target.value)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '8px 12px',
+                                                    border: '2px solid #d1d5db',
+                                                    borderRadius: '6px',
+                                                    fontSize: '14px'
+                                                }}
+                                            >
+                                                <option value="low">🌊 Low</option>
+                                                <option value="normal">📌 Normal</option>
+                                                <option value="important">⚠️ Important</option>
+                                                <option value="critical">🔥 Critical</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Row 2: Spoons, Focus */}
+                                    <div style={{display: 'flex', gap: '12px', marginBottom: '12px'}}>
+                                        <div style={{flex: 1}}>
+                                            <label style={{display: 'block', marginBottom: '4px', fontWeight: 600, fontSize: '13px'}}>
+                                                Spoons (Energy)
+                                            </label>
+                                            <select
+                                                value={newTaskSpoons}
+                                                onChange={(e) => setNewTaskSpoons(e.target.value)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '8px 12px',
+                                                    border: '2px solid #d1d5db',
+                                                    borderRadius: '6px',
+                                                    fontSize: '14px'
+                                                }}
+                                            >
+                                                <option value="low">1 🥄 Low</option>
+                                                <option value="medium">2 🥄 Medium</option>
+                                                <option value="high">3 🥄 High</option>
+                                            </select>
+                                        </div>
+                                        <div style={{flex: 1}}>
+                                            <label style={{display: 'block', marginBottom: '4px', fontWeight: 600, fontSize: '13px'}}>
+                                                Focus Level
+                                            </label>
+                                            <select
+                                                value={newTaskFocus}
+                                                onChange={(e) => setNewTaskFocus(e.target.value)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '8px 12px',
+                                                    border: '2px solid #d1d5db',
+                                                    borderRadius: '6px',
+                                                    fontSize: '14px'
+                                                }}
+                                            >
+                                                <option value="low">Low Focus</option>
+                                                <option value="medium">Medium Focus</option>
+                                                <option value="high">High Focus</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Row 3: When, Status */}
+                                    <div style={{display: 'flex', gap: '12px', marginBottom: '12px'}}>
+                                        <div style={{flex: 1}}>
+                                            <label style={{display: 'block', marginBottom: '4px', fontWeight: 600, fontSize: '13px'}}>
+                                                When
+                                            </label>
+                                            <select
+                                                value={newTaskView}
+                                                onChange={(e) => setNewTaskView(e.target.value)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '8px 12px',
+                                                    border: '2px solid #d1d5db',
+                                                    borderRadius: '6px',
+                                                    fontSize: '14px'
+                                                }}
+                                            >
+                                                <option value="today">🔥 Today</option>
+                                                <option value="this-week">📅 This Week</option>
+                                                <option value="next-week">📆 Next Week</option>
+                                                <option value="this-month">🗓️ This Month</option>
+                                                <option value="later">🌊 Later</option>
+                                            </select>
+                                        </div>
+                                        <div style={{flex: 1}}>
+                                            <label style={{display: 'block', marginBottom: '4px', fontWeight: 600, fontSize: '13px'}}>
+                                                Status
+                                            </label>
+                                            <select
+                                                value={newTaskStatus}
+                                                onChange={(e) => setNewTaskStatus(e.target.value)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '8px 12px',
+                                                    border: '2px solid #d1d5db',
+                                                    borderRadius: '6px',
+                                                    fontSize: '14px'
+                                                }}
+                                            >
+                                                <option value="active">✓ Active</option>
+                                                <option value="waiting">⏳ Waiting</option>
+                                                <option value="blocked">🚫 Blocked</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Conditional: Waiting For */}
+                                    {newTaskStatus === 'waiting' && (
+                                        <div style={{marginBottom: '12px'}}>
+                                            <label style={{display: 'block', marginBottom: '4px', fontWeight: 600, fontSize: '13px'}}>
+                                                Waiting For
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={newTaskWaitingFor}
+                                                onChange={(e) => setNewTaskWaitingFor(e.target.value)}
+                                                placeholder="e.g., Client approval, Team feedback"
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '8px 12px',
+                                                    border: '2px solid #d1d5db',
+                                                    borderRadius: '6px',
+                                                    fontSize: '14px'
+                                                }}
+                                            />
+                                        </div>
+                                    )}
+
+                                    {/* Due Date */}
+                                    <div style={{marginBottom: '12px'}}>
+                                        <label style={{display: 'block', marginBottom: '4px', fontWeight: 600, fontSize: '13px'}}>
+                                            Due Date (Optional)
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={newTaskDueDate}
+                                            onChange={(e) => setNewTaskDueDate(e.target.value)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '8px 12px',
+                                                border: '2px solid #d1d5db',
+                                                borderRadius: '6px',
+                                                fontSize: '14px'
+                                            }}
+                                        />
+                                    </div>
+
+                                    {/* Client & Billing */}
+                                    <div style={{display: 'flex', gap: '12px', marginBottom: '12px'}}>
+                                        <div style={{flex: 1}}>
+                                            <label style={{display: 'block', marginBottom: '4px', fontWeight: 600, fontSize: '13px'}}>
+                                                Client (Optional)
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={newTaskClient}
+                                                onChange={(e) => setNewTaskClient(e.target.value)}
+                                                placeholder="Client name"
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '8px 12px',
+                                                    border: '2px solid #d1d5db',
+                                                    borderRadius: '6px',
+                                                    fontSize: '14px'
+                                                }}
+                                            />
+                                        </div>
+                                        <div style={{flex: 1, display: 'flex', alignItems: 'flex-end'}}>
+                                            <label style={{display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 0'}}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={newTaskBillable}
+                                                    onChange={(e) => setNewTaskBillable(e.target.checked)}
+                                                    style={{cursor: 'pointer'}}
+                                                />
+                                                <span style={{fontWeight: 600, fontSize: '13px'}}>Billable</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    {/* Time Estimate */}
+                                    <div style={{marginBottom: '16px'}}>
+                                        <label style={{display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '13px'}}>
+                                            Time Estimate (Optional)
+                                        </label>
+                                        <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
+                                            <button
+                                                onClick={() => setNewTaskEstimate(0.25)}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    background: newTaskEstimate === 0.25 ? '#667eea' : 'white',
+                                                    color: newTaskEstimate === 0.25 ? 'white' : '#333',
+                                                    border: '2px solid ' + (newTaskEstimate === 0.25 ? '#667eea' : '#d1d5db'),
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '12px',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                15min
+                                            </button>
+                                            <button
+                                                onClick={() => setNewTaskEstimate(0.5)}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    background: newTaskEstimate === 0.5 ? '#667eea' : 'white',
+                                                    color: newTaskEstimate === 0.5 ? 'white' : '#333',
+                                                    border: '2px solid ' + (newTaskEstimate === 0.5 ? '#667eea' : '#d1d5db'),
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '12px',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                30min
+                                            </button>
+                                            <button
+                                                onClick={() => setNewTaskEstimate(1)}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    background: newTaskEstimate === 1 ? '#667eea' : 'white',
+                                                    color: newTaskEstimate === 1 ? 'white' : '#333',
+                                                    border: '2px solid ' + (newTaskEstimate === 1 ? '#667eea' : '#d1d5db'),
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '12px',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                1h
+                                            </button>
+                                            <button
+                                                onClick={() => setNewTaskEstimate(2)}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    background: newTaskEstimate === 2 ? '#667eea' : 'white',
+                                                    color: newTaskEstimate === 2 ? 'white' : '#333',
+                                                    border: '2px solid ' + (newTaskEstimate === 2 ? '#667eea' : '#d1d5db'),
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '12px',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                2h
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    const time = prompt('Enter hours (e.g., 3.5):');
+                                                    if (time && !isNaN(parseFloat(time))) {
+                                                        setNewTaskEstimate(parseFloat(time));
+                                                    }
+                                                }}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    background: 'white',
+                                                    color: '#333',
+                                                    border: '2px solid #d1d5db',
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '12px',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                Custom
+                                            </button>
+                                        </div>
+                                        {newTaskEstimate && (
+                                            <div style={{marginTop: '4px', fontSize: '12px', color: '#6b7280'}}>
+                                                Selected: {newTaskEstimate < 1 ? `${newTaskEstimate * 60}min` : `${newTaskEstimate}h`}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Action Buttons */}
+                                    <div style={{display: 'flex', gap: '10px'}}>
+                                        <button
+                                            onClick={handleNewTaskSubmit}
+                                            style={{
+                                                flex: 1,
+                                                padding: '12px',
+                                                background: '#667eea',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '8px',
+                                                fontWeight: 600,
+                                                cursor: 'pointer',
+                                                fontSize: '14px'
+                                            }}
+                                        >
+                                            Add Task
+                                        </button>
+                                        <button
+                                            onClick={() => setShowAddTask(false)}
+                                            style={{
+                                                padding: '12px 20px',
+                                                background: 'white',
+                                                color: '#6b7280',
+                                                border: '2px solid #d1d5db',
+                                                borderRadius: '8px',
+                                                fontWeight: 600,
+                                                cursor: 'pointer',
+                                                fontSize: '14px'
+                                            }}
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="chat-container">
+                            {messages.map((msg, index) => (
+                                <div key={index} className={`message ${msg.role}`}>
+                                    {msg.content}
+                                </div>
+                            ))}
+                            {isLoading && (
+                                <div className="message assistant">
+                                    Thinking...
+                                </div>
+                            )}
+                            <div ref={chatEndRef} />
+                        </div>
+
+                        <div className="input-area">
+                            <input
+                                type="text"
+                                value={inputMessage}
+                                onChange={(e) => setInputMessage(e.target.value)}
+                                onKeyPress={handleKeyPress}
+                                placeholder="What's on your mind?"
+                                disabled={isLoading}
+                            />
+                            <button onClick={sendMessage} disabled={isLoading || !inputMessage.trim()}>
+                                Send
+                            </button>
+                        </div>
+
+                        {/* View Tabs + Task List */}
+                        {tasks.length > 0 && (() => {
+                            // First filter by view
+                            const tasksInView = tasks.filter(t => t.view === currentView);
+
+                            // Then filter by energy
+                            const filterTasksByEnergy = (taskList) => {
+                                if (!dailyEnergy) return taskList; // No energy set, show all
+
+                                const energyLevels = { low: 1, medium: 2, high: 3 };
+                                const userEnergyLevel = energyLevels[dailyEnergy.level];
+
+                                return taskList.filter(task => {
+                                    const taskEnergyLevel = energyLevels[task.spoonsRequired || 'medium'];
+                                    return taskEnergyLevel <= userEnergyLevel;
+                                });
+                            };
+
+                            const filteredTasks = filterTasksByEnergy(tasksInView);
+                            const hiddenCount = tasksInView.length - filteredTasks.length;
+
+                            // Count tasks per view
+                            const todayCount = tasks.filter(t => t.view === 'today').length;
+                            const weekCount = tasks.filter(t => t.view === 'this-week').length;
+                            const nextWeekCount = tasks.filter(t => t.view === 'next-week').length;
+                            const monthCount = tasks.filter(t => t.view === 'this-month').length;
+                            const laterCount = tasks.filter(t => t.view === 'later').length;
+
+                            return (
+                                <div className="tasks-section">
+                                    {/* View Tabs */}
+                                    <div style={{
+                                        display: 'flex',
+                                        gap: '8px',
+                                        marginBottom: '20px',
+                                        borderBottom: '2px solid #e5e7eb',
+                                        paddingBottom: '10px'
+                                    }}>
+                                        <button
+                                            onClick={() => setCurrentView('today')}
+                                            style={{
+                                                padding: '8px 16px',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                borderBottom: currentView === 'today' ? '3px solid #667eea' : '3px solid transparent',
+                                                fontSize: '15px',
+                                                fontWeight: 600,
+                                                color: currentView === 'today' ? '#667eea' : '#6b7280',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            Today ({todayCount})
+                                        </button>
+                                        <button
+                                            onClick={() => setCurrentView('this-week')}
+                                            style={{
+                                                padding: '8px 16px',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                borderBottom: currentView === 'this-week' ? '3px solid #667eea' : '3px solid transparent',
+                                                fontSize: '15px',
+                                                fontWeight: 600,
+                                                color: currentView === 'this-week' ? '#667eea' : '#6b7280',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            This Week ({weekCount})
+                                        </button>
+                                        <button
+                                            onClick={() => setCurrentView('next-week')}
+                                            style={{
+                                                padding: '8px 16px',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                borderBottom: currentView === 'next-week' ? '3px solid #667eea' : '3px solid transparent',
+                                                fontSize: '15px',
+                                                fontWeight: 600,
+                                                color: currentView === 'next-week' ? '#667eea' : '#6b7280',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            Next Week ({nextWeekCount})
+                                        </button>
+                                        <button
+                                            onClick={() => setCurrentView('this-month')}
+                                            style={{
+                                                padding: '8px 16px',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                borderBottom: currentView === 'this-month' ? '3px solid #667eea' : '3px solid transparent',
+                                                fontSize: '15px',
+                                                fontWeight: 600,
+                                                color: currentView === 'this-month' ? '#667eea' : '#6b7280',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            This Month ({monthCount})
+                                        </button>
+                                        <button
+                                            onClick={() => setCurrentView('later')}
+                                            style={{
+                                                padding: '8px 16px',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                borderBottom: currentView === 'later' ? '3px solid #667eea' : '3px solid transparent',
+                                                fontSize: '15px',
+                                                fontWeight: 600,
+                                                color: currentView === 'later' ? '#667eea' : '#6b7280',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            Later ({laterCount})
+                                        </button>
+                                    </div>
+
+                                    <h3 style={{marginBottom: '15px'}}>
+                                        {currentView === 'today' ? 'Today' :
+                                         currentView === 'this-week' ? 'This Week' :
+                                         currentView === 'next-week' ? 'Next Week' :
+                                         currentView === 'this-month' ? 'This Month' : 'Later'}
+                                        {' '}({filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''} {dailyEnergy && `for ${dailyEnergy.level} energy`})
+                                    </h3>
+
+                                    {hiddenCount > 0 && dailyEnergy && (
+                                        <div style={{
+                                            background: '#fef3c7',
+                                            padding: '10px',
+                                            borderRadius: '6px',
+                                            marginBottom: '15px',
+                                            fontSize: '14px',
+                                            color: '#78350f'
+                                        }}>
+                                            {hiddenCount} task{hiddenCount > 1 ? 's' : ''} hidden (requires more energy than you have today)
+                                        </div>
+                                    )}
+
+                                    {/* Time Summary for Today view */}
+                                    {currentView === 'today' && (() => {
+                                        const totalEstimated = filteredTasks.reduce((sum, task) => {
+                                            return sum + (task.estimatedTime || 0);
+                                        }, 0);
+
+                                        const busyHours = parseCalendarInput(calendarInput);
+                                        const workdayHours = 8; // Assuming 8-hour workday
+                                        const availableHours = workdayHours - busyHours;
+
+                                        if (totalEstimated === 0 && busyHours === 0) return null;
+
+                                        const isOvercommitted = totalEstimated > availableHours && availableHours > 0;
+                                        const isVeryOvercommitted = totalEstimated > workdayHours;
+
+                                        return (
+                                            <div style={{
+                                                background: isVeryOvercommitted ? '#fee2e2' : isOvercommitted ? '#fef3c7' : '#e0e7ff',
+                                                padding: '15px',
+                                                borderRadius: '8px',
+                                                marginBottom: '15px',
+                                                border: `2px solid ${isVeryOvercommitted ? '#ef4444' : isOvercommitted ? '#f59e0b' : '#667eea'}`
+                                            }}>
+                                                {busyHours > 0 && (
+                                                    <div style={{fontSize: '14px', marginBottom: '8px'}}>
+                                                        <strong>Calendar:</strong> {busyHours.toFixed(1)} hours in meetings/calls
+                                                    </div>
+                                                )}
+                                                {busyHours > 0 && (
+                                                    <div style={{fontSize: '14px', marginBottom: '8px', color: '#059669'}}>
+                                                        <strong>Available for tasks:</strong> {availableHours.toFixed(1)} hours
+                                                    </div>
+                                                )}
+                                                {totalEstimated > 0 && (
+                                                    <div style={{fontSize: '14px', marginBottom: '5px'}}>
+                                                        <strong>Task time estimate:</strong> {totalEstimated.toFixed(1)} hours
+                                                    </div>
+                                                )}
+                                                {isVeryOvercommitted && (
+                                                    <div style={{fontSize: '13px', color: '#991b1b', marginTop: '8px'}}>
+                                                        ⚠️ <strong>Seriously overcommitted!</strong> You have {totalEstimated.toFixed(1)}h of tasks but only {availableHours > 0 ? availableHours.toFixed(1) : 0}h available. Move tasks to "This Week" or "Later".
+                                                    </div>
+                                                )}
+                                                {isOvercommitted && !isVeryOvercommitted && (
+                                                    <div style={{fontSize: '13px', color: '#92400e', marginTop: '8px'}}>
+                                                        ⚠️ You might be overcommitted - {totalEstimated.toFixed(1)}h of tasks with only {availableHours.toFixed(1)}h available.
+                                                    </div>
+                                                )}
+                                                {!isOvercommitted && totalEstimated > 4 && availableHours > 0 && (
+                                                    <div style={{fontSize: '13px', color: '#3730a3', marginTop: '8px'}}>
+                                                        This is a full day, but manageable. You have {availableHours.toFixed(1)}h available.
+                                                    </div>
+                                                )}
+                                                {!isOvercommitted && totalEstimated <= 4 && busyHours > 0 && (
+                                                    <div style={{fontSize: '13px', color: '#059669', marginTop: '8px'}}>
+                                                        ✓ Good balance - {totalEstimated.toFixed(1)}h of tasks with {availableHours.toFixed(1)}h available.
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
+
+                                    {Object.entries(
+                                        filteredTasks.reduce((acc, task) => {
+                                            const cat = task.category || 'Uncategorized';
+                                            if (!acc[cat]) acc[cat] = [];
+                                            acc[cat].push(task);
+                                            return acc;
+                                        }, {})
+                                    ).map(([category, categoryTasks]) => {
+                                        // Separate parent tasks and subtasks
+                                        const parentTasks = categoryTasks.filter(t => !t.parentTaskId);
+                                        const subtasksByParent = categoryTasks
+                                            .filter(t => t.parentTaskId)
+                                            .reduce((acc, task) => {
+                                                if (!acc[task.parentTaskId]) acc[task.parentTaskId] = [];
+                                                acc[task.parentTaskId].push(task);
+                                                return acc;
+                                            }, {});
+
+                                        const renderTask = (task, isSubtask = false) => {
+                                            const subtasks = subtasksByParent[task.id] || [];
+                                            const completedSubtasks = subtasks.filter(st =>
+                                                completedTasks.some(ct => ct.id === st.id)
+                                            ).length;
+                                            const isExpanded = expandedParents[task.id];
+
+                                            return (
+                                                <React.Fragment key={task.id}>
+                                                    <li className="task-item now" style={{
+                                                        display: 'flex',
+                                                        justifyContent: 'space-between',
+                                                        alignItems: 'center',
+                                                        marginLeft: isSubtask ? '30px' : '0',
+                                                        background: isSubtask ? '#fafafa' : '#f9fafb',
+                                                        borderLeft: isSubtask ? '3px solid #d1d5db' : '4px solid'
+                                                    }}>
+                                                        <div style={{flex: 1}}>
+                                                            {task.hasSubtasks && (
+                                                                <button
+                                                                    onClick={() => setExpandedParents({
+                                                                        ...expandedParents,
+                                                                        [task.id]: !isExpanded
+                                                                    })}
+                                                                    style={{
+                                                                        background: 'transparent',
+                                                                        border: 'none',
+                                                                        cursor: 'pointer',
+                                                                        marginRight: '8px',
+                                                                        fontSize: '14px',
+                                                                        padding: '0'
+                                                                    }}
+                                                                >
+                                                                    {isExpanded ? '▼' : '▶'}
+                                                                </button>
+                                                            )}
+                                                            <span>{task.title}</span>
+                                                            {task.hasSubtasks && (
+                                                                <span style={{
+                                                                    marginLeft: '8px',
+                                                                    fontSize: '11px',
+                                                                    padding: '2px 6px',
+                                                                    borderRadius: '4px',
+                                                                    background: completedSubtasks === subtasks.length ? '#d1fae5' : '#e0e7ff',
+                                                                    color: completedSubtasks === subtasks.length ? '#065f46' : '#3730a3',
+                                                                    fontWeight: 600
+                                                                }}>
+                                                                    {completedSubtasks}/{subtasks.length} done
+                                                                </span>
+                                                            )}
+                                                            <span style={{
+                                                                marginLeft: '10px',
+                                                                fontSize: '11px',
+                                                                padding: '2px 6px',
+                                                                borderRadius: '4px',
+                                                                background: task.spoonsRequired === 'low' ? '#fee2e2' : task.spoonsRequired === 'high' ? '#d1fae5' : '#fef3c7',
+                                                                color: task.spoonsRequired === 'low' ? '#991b1b' : task.spoonsRequired === 'high' ? '#065f46' : '#92400e'
+                                                            }}>
+                                                                {task.spoonsRequired === 'low' ? '1' : task.spoonsRequired === 'high' ? '3' : '2'} 🥄 {task.spoonsRequired || 'medium'}
+                                                            </span>
+                                                            {task.client && (
+                                                                <span style={{
+                                                                    marginLeft: '8px',
+                                                                    fontSize: '11px',
+                                                                    padding: '2px 6px',
+                                                                    borderRadius: '4px',
+                                                                    background: '#e0e7ff',
+                                                                    color: '#3730a3',
+                                                                    fontWeight: 600
+                                                                }}>
+                                                                    {task.client}
+                                                                </span>
+                                                            )}
+                                                            {task.billable && (
+                                                                <span style={{
+                                                                    marginLeft: '6px',
+                                                                    fontSize: '11px',
+                                                                    padding: '2px 6px',
+                                                                    borderRadius: '4px',
+                                                                    background: '#d1fae5',
+                                                                    color: '#065f46',
+                                                                    fontWeight: 700
+                                                                }}>
+                                                                    $ Billable
+                                                                </span>
+                                                            )}
+                                                            {task.estimatedTime && (
+                                                                <span style={{
+                                                                    marginLeft: '6px',
+                                                                    fontSize: '11px',
+                                                                    padding: '2px 6px',
+                                                                    borderRadius: '4px',
+                                                                    background: '#fef3c7',
+                                                                    color: '#78350f',
+                                                                    fontWeight: 600
+                                                                }}>
+                                                                    ~{task.estimatedTime < 1 ? `${task.estimatedTime * 60}min` : `${task.estimatedTime}h`}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
+                                                            <select
+                                                                value={task.view}
+                                                                onChange={(e) => moveTask(task.id, e.target.value)}
+                                                                style={{
+                                                                    padding: '4px 8px',
+                                                                    borderRadius: '4px',
+                                                                    border: '1px solid #e5e7eb',
+                                                                    fontSize: '12px',
+                                                                    cursor: 'pointer'
+                                                                }}
+                                                            >
+                                                                <option value="today">🔥 Today</option>
+                                                                <option value="this-week">📅 This Week</option>
+                                                                <option value="next-week">📆 Next Week</option>
+                                                                <option value="this-month">🗓️ This Month</option>
+                                                                <option value="later">🌊 Later</option>
+                                                            </select>
+                                                            {!task.hasSubtasks && (
+                                                                <button
+                                                                    onClick={() => handleBreakdownTask(task)}
+                                                                    style={{
+                                                                        background: '#8b5cf6',
+                                                                        color: 'white',
+                                                                        border: 'none',
+                                                                        padding: '4px 8px',
+                                                                        borderRadius: '4px',
+                                                                        cursor: 'pointer',
+                                                                        fontSize: '12px'
+                                                                    }}
+                                                                >
+                                                                    Break Down
+                                                                </button>
+                                                            )}
+                                                            <button
+                                                                onClick={() => {
+                                                                    setTaskToComplete(task);
+                                                                    setShowCompleteModal(true);
+                                                                }}
+                                                                style={{
+                                                                    background: '#22c55e',
+                                                                    color: 'white',
+                                                                    border: 'none',
+                                                                    padding: '4px 8px',
+                                                                    borderRadius: '4px',
+                                                                    cursor: 'pointer',
+                                                                    fontSize: '12px'
+                                                                }}
+                                                            >
+                                                                Complete
+                                                            </button>
+                                                            <button
+                                                                onClick={() => deleteTask(task.id)}
+                                                                style={{
+                                                                    background: '#ef4444',
+                                                                    color: 'white',
+                                                                    border: 'none',
+                                                                    padding: '4px 8px',
+                                                                    borderRadius: '4px',
+                                                                    cursor: 'pointer',
+                                                                    fontSize: '12px'
+                                                                }}
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        </div>
+                                                    </li>
+                                                    {task.hasSubtasks && isExpanded && subtasks.map(subtask => renderTask(subtask, true))}
+                                                </React.Fragment>
+                                            );
+                                        };
+
+                                        return (
+                                            <div key={category} className="task-category">
+                                                <h4>{category} ({parentTasks.length})</h4>
+                                                <ul className="task-list">
+                                                    {parentTasks.map((task) => renderTask(task))}
+                                                </ul>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            );
+                        })()}
+
+                        {/* Complete Task Modal */}
+                        {showCompleteModal && taskToComplete && (
+                            <div style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: 'rgba(0, 0, 0, 0.5)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 1000
+                            }} onClick={() => setShowCompleteModal(false)}>
+                                <div style={{
+                                    background: 'white',
+                                    borderRadius: '16px',
+                                    padding: '30px',
+                                    maxWidth: '500px',
+                                    width: '90%'
+                                }} onClick={(e) => e.stopPropagation()}>
+                                    <h3 style={{marginBottom: '15px'}}>Task Complete!</h3>
+                                    <p style={{marginBottom: '15px'}}><strong>{taskToComplete.title}</strong></p>
+                                    {taskToComplete.estimatedTime && (
+                                        <p style={{marginBottom: '15px', fontSize: '14px', color: '#6b7280'}}>
+                                            You estimated: <strong>{taskToComplete.estimatedTime < 1 ? `${taskToComplete.estimatedTime * 60} minutes` : `${taskToComplete.estimatedTime} hour${taskToComplete.estimatedTime > 1 ? 's' : ''}`}</strong>
+                                        </p>
+                                    )}
+                                    <div>
+                                        <label style={{display: 'block', marginBottom: '10px', fontWeight: 600}}>How long did this actually take?</label>
+                                        <div style={{display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
+                                            <button
+                                                onClick={() => completeTask(taskToComplete.id, '0.25')}
+                                                style={{
+                                                    padding: '10px 16px',
+                                                    background: '#667eea',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                15 min
+                                            </button>
+                                            <button
+                                                onClick={() => completeTask(taskToComplete.id, '0.5')}
+                                                style={{
+                                                    padding: '10px 16px',
+                                                    background: '#667eea',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                30 min
+                                            </button>
+                                            <button
+                                                onClick={() => completeTask(taskToComplete.id, '1')}
+                                                style={{
+                                                    padding: '10px 16px',
+                                                    background: '#667eea',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                1 hour
+                                            </button>
+                                            <button
+                                                onClick={() => completeTask(taskToComplete.id, '2')}
+                                                style={{
+                                                    padding: '10px 16px',
+                                                    background: '#667eea',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                2 hours
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    const time = prompt('Enter hours (e.g., 1.5):');
+                                                    if (time) completeTask(taskToComplete.id, time);
+                                                }}
+                                                style={{
+                                                    padding: '10px 16px',
+                                                    background: '#6b7280',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                Custom
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div style={{marginTop: '20px', display: 'flex', justifyContent: 'flex-end'}}>
+                                        <button
+                                            onClick={() => setShowCompleteModal(false)}
+                                            style={{
+                                                padding: '8px 16px',
+                                                background: '#6b7280',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Time Estimate Modal */}
+                        {showEstimateModal && pendingTask && (
+                            <div style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: 'rgba(0, 0, 0, 0.5)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 1000
+                            }} onClick={() => setShowEstimateModal(false)}>
+                                <div style={{
+                                    background: 'white',
+                                    borderRadius: '16px',
+                                    padding: '30px',
+                                    maxWidth: '500px',
+                                    width: '90%'
+                                }} onClick={(e) => e.stopPropagation()}>
+                                    <h3 style={{marginBottom: '15px'}}>How long will this take?</h3>
+                                    <p style={{marginBottom: '15px', fontSize: '14px', color: '#6b7280'}}>
+                                        <strong>{pendingTask.title}</strong>
+                                    </p>
+                                    <p style={{marginBottom: '15px', fontSize: '13px', color: '#6b7280'}}>
+                                        Estimating helps with planning your day. You can skip this if you're not sure.
+                                    </p>
+                                    <div>
+                                        <label style={{display: 'block', marginBottom: '10px', fontWeight: 600}}>Estimated time:</label>
+                                        <div style={{display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
+                                            <button
+                                                onClick={() => {
+                                                    addTask(pendingTask.title, pendingTask.category, pendingTask.spoonsRequired, pendingTask.view, pendingTask.client, pendingTask.billable, 0.25);
+                                                    setShowEstimateModal(false);
+                                                    setPendingTask(null);
+                                                }}
+                                                style={{
+                                                    padding: '10px 16px',
+                                                    background: '#667eea',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                15 min
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    addTask(pendingTask.title, pendingTask.category, pendingTask.spoonsRequired, pendingTask.view, pendingTask.client, pendingTask.billable, 0.5);
+                                                    setShowEstimateModal(false);
+                                                    setPendingTask(null);
+                                                }}
+                                                style={{
+                                                    padding: '10px 16px',
+                                                    background: '#667eea',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                30 min
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    addTask(pendingTask.title, pendingTask.category, pendingTask.spoonsRequired, pendingTask.view, pendingTask.client, pendingTask.billable, 1);
+                                                    setShowEstimateModal(false);
+                                                    setPendingTask(null);
+                                                }}
+                                                style={{
+                                                    padding: '10px 16px',
+                                                    background: '#667eea',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                1 hour
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    addTask(pendingTask.title, pendingTask.category, pendingTask.spoonsRequired, pendingTask.view, pendingTask.client, pendingTask.billable, 2);
+                                                    setShowEstimateModal(false);
+                                                    setPendingTask(null);
+                                                }}
+                                                style={{
+                                                    padding: '10px 16px',
+                                                    background: '#667eea',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                2 hours
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    const time = prompt('Enter hours (e.g., 1.5):');
+                                                    if (time) {
+                                                        addTask(pendingTask.title, pendingTask.category, pendingTask.spoonsRequired, pendingTask.view, pendingTask.client, pendingTask.billable, parseFloat(time));
+                                                        setShowEstimateModal(false);
+                                                        setPendingTask(null);
+                                                    }
+                                                }}
+                                                style={{
+                                                    padding: '10px 16px',
+                                                    background: '#6b7280',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                Custom
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div style={{marginTop: '20px', display: 'flex', justifyContent: 'flex-end'}}>
+                                        <button
+                                            onClick={() => {
+                                                addTask(pendingTask.title, pendingTask.category, pendingTask.spoonsRequired, pendingTask.view, pendingTask.client, pendingTask.billable, null);
+                                                setShowEstimateModal(false);
+                                                setPendingTask(null);
+                                            }}
+                                            style={{
+                                                padding: '8px 16px',
+                                                background: '#9ca3af',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            Skip / Not Sure
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Bulk Upload Modal */}
+                        {showBulkUploadModal && (
+                            <div style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: 'rgba(0, 0, 0, 0.5)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 1000
+                            }} onClick={() => setShowBulkUploadModal(false)}>
+                                <div style={{
+                                    background: 'white',
+                                    borderRadius: '16px',
+                                    padding: '30px',
+                                    maxWidth: '600px',
+                                    width: '90%',
+                                    maxHeight: '80vh',
+                                    display: 'flex',
+                                    flexDirection: 'column'
+                                }} onClick={(e) => e.stopPropagation()}>
+                                    <h3 style={{marginBottom: '15px'}}>Bulk Upload Tasks</h3>
+                                    <p style={{marginBottom: '15px', color: '#6b7280', fontSize: '14px'}}>
+                                        Paste your task list below - one task per line. All tasks will be added to "Later" view with medium energy.
+                                    </p>
+
+                                    {/* Client and Billable fields */}
+                                    <div style={{marginBottom: '15px', padding: '15px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb'}}>
+                                        <label style={{display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 600, color: '#333'}}>
+                                            Client (optional - applies to all tasks):
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={bulkUploadClient}
+                                            onChange={(e) => setBulkUploadClient(e.target.value)}
+                                            placeholder="Leave blank if not for a specific client"
+                                            style={{
+                                                width: '100%',
+                                                padding: '8px 12px',
+                                                border: '2px solid #e5e7eb',
+                                                borderRadius: '6px',
+                                                fontSize: '14px',
+                                                marginBottom: '10px'
+                                            }}
+                                        />
+                                        <label style={{display: 'flex', alignItems: 'center', fontSize: '13px', cursor: 'pointer'}}>
+                                            <input
+                                                type="checkbox"
+                                                checked={bulkUploadBillable}
+                                                onChange={(e) => setBulkUploadBillable(e.target.checked)}
+                                                style={{marginRight: '8px', cursor: 'pointer'}}
+                                            />
+                                            <span style={{fontWeight: 600, color: '#333'}}>Mark all as billable</span>
+                                        </label>
+                                    </div>
+
+                                    <textarea
+                                        value={bulkUploadText}
+                                        onChange={(e) => setBulkUploadText(e.target.value)}
+                                        placeholder="Example:&#10;Finish project proposal&#10;Email client about timeline&#10;Review quarterly budget&#10;Schedule team meeting"
+                                        style={{
+                                            width: '100%',
+                                            minHeight: '250px',
+                                            padding: '12px',
+                                            border: '2px solid #e5e7eb',
+                                            borderRadius: '8px',
+                                            fontSize: '14px',
+                                            fontFamily: 'inherit',
+                                            resize: 'vertical',
+                                            marginBottom: '20px',
+                                            flex: 1
+                                        }}
+                                    />
+                                    <div style={{display: 'flex', gap: '10px', justifyContent: 'flex-end'}}>
+                                        <button
+                                            onClick={() => {
+                                                setShowBulkUploadModal(false);
+                                                setBulkUploadText('');
+                                                setBulkUploadClient('');
+                                                setBulkUploadBillable(false);
+                                            }}
+                                            style={{
+                                                padding: '10px 20px',
+                                                background: '#6b7280',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '8px',
+                                                cursor: 'pointer',
+                                                fontWeight: 600
+                                            }}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={handleBulkUpload}
+                                            disabled={!bulkUploadText.trim()}
+                                            style={{
+                                                padding: '10px 20px',
+                                                background: bulkUploadText.trim() ? '#667eea' : '#9ca3af',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '8px',
+                                                cursor: bulkUploadText.trim() ? 'pointer' : 'not-allowed',
+                                                fontWeight: 600
+                                            }}
+                                        >
+                                            Add Tasks
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Monthly Billing View Modal */}
+                        {showBillingView && (
+                            <div style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: 'rgba(0, 0, 0, 0.5)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 1000
+                            }} onClick={() => setShowBillingView(false)}>
+                                <div style={{
+                                    background: 'white',
+                                    borderRadius: '16px',
+                                    padding: '30px',
+                                    maxWidth: '800px',
+                                    width: '90%',
+                                    maxHeight: '80vh',
+                                    overflowY: 'auto'
+                                }} onClick={(e) => e.stopPropagation()}>
+                                    <h3 style={{marginBottom: '20px', color: '#333'}}>Monthly Billing Report</h3>
+
+                                    {/* Month Selector */}
+                                    <div style={{marginBottom: '20px'}}>
+                                        <label style={{display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 600}}>
+                                            Select Month:
+                                        </label>
+                                        <input
+                                            type="month"
+                                            value={billingMonth}
+                                            onChange={(e) => setBillingMonth(e.target.value)}
+                                            style={{
+                                                padding: '8px 12px',
+                                                border: '2px solid #e5e7eb',
+                                                borderRadius: '6px',
+                                                fontSize: '14px'
+                                            }}
+                                        />
+                                    </div>
+
+                                    {(() => {
+                                        // Filter completed tasks for selected month
+                                        const [year, month] = billingMonth.split('-');
+                                        const startDate = new Date(year, month - 1, 1).getTime();
+                                        const endDate = new Date(year, month, 0, 23, 59, 59).getTime();
+
+                                        const monthTasks = completedTasks.filter(task => {
+                                            return task.completedDate >= startDate && task.completedDate <= endDate;
+                                        });
+
+                                        // Group by client
+                                        const byClient = {};
+                                        let totalHours = 0;
+                                        let billableHours = 0;
+
+                                        monthTasks.forEach(task => {
+                                            const clientName = task.client || 'No Client';
+                                            const hours = parseFloat(task.actualTime) || 0;
+
+                                            if (!byClient[clientName]) {
+                                                byClient[clientName] = {
+                                                    tasks: [],
+                                                    totalHours: 0,
+                                                    billableHours: 0
+                                                };
+                                            }
+
+                                            byClient[clientName].tasks.push(task);
+                                            byClient[clientName].totalHours += hours;
+
+                                            if (task.billable) {
+                                                byClient[clientName].billableHours += hours;
+                                                billableHours += hours;
+                                            }
+
+                                            totalHours += hours;
+                                        });
+
+                                        const clients = Object.keys(byClient).sort();
+
+                                        return (
+                                            <div>
+                                                {/* Summary */}
+                                                <div style={{
+                                                    background: '#f9fafb',
+                                                    padding: '15px',
+                                                    borderRadius: '8px',
+                                                    marginBottom: '20px',
+                                                    border: '2px solid #e5e7eb'
+                                                }}>
+                                                    <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '8px'}}>
+                                                        <span style={{fontWeight: 600}}>Total Hours:</span>
+                                                        <span style={{fontSize: '18px', fontWeight: 700, color: '#333'}}>
+                                                            {totalHours.toFixed(2)}h
+                                                        </span>
+                                                    </div>
+                                                    <div style={{display: 'flex', justifyContent: 'space-between'}}>
+                                                        <span style={{fontWeight: 600, color: '#065f46'}}>Billable Hours:</span>
+                                                        <span style={{fontSize: '18px', fontWeight: 700, color: '#065f46'}}>
+                                                            {billableHours.toFixed(2)}h
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {clients.length === 0 ? (
+                                                    <p style={{textAlign: 'center', color: '#6b7280', padding: '40px'}}>
+                                                        No completed tasks for this month
+                                                    </p>
+                                                ) : (
+                                                    clients.map(clientName => {
+                                                        const client = byClient[clientName];
+                                                        return (
+                                                            <div key={clientName} style={{
+                                                                marginBottom: '20px',
+                                                                border: '1px solid #e5e7eb',
+                                                                borderRadius: '8px',
+                                                                overflow: 'hidden'
+                                                            }}>
+                                                                <div style={{
+                                                                    background: '#f3f4f6',
+                                                                    padding: '12px 15px',
+                                                                    borderBottom: '1px solid #e5e7eb'
+                                                                }}>
+                                                                    <h4 style={{margin: 0, fontSize: '16px', color: '#333'}}>
+                                                                        {clientName}
+                                                                    </h4>
+                                                                    <div style={{fontSize: '13px', color: '#6b7280', marginTop: '4px'}}>
+                                                                        Total: {client.totalHours.toFixed(2)}h
+                                                                        {client.billableHours > 0 && (
+                                                                            <span style={{marginLeft: '12px', color: '#065f46', fontWeight: 600}}>
+                                                                                Billable: {client.billableHours.toFixed(2)}h
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                <div style={{padding: '15px'}}>
+                                                                    {client.tasks.map(task => {
+                                                                        const completedDate = new Date(task.completedDate);
+                                                                        const dateStr = completedDate.toLocaleDateString('en-US', {
+                                                                            month: 'short',
+                                                                            day: 'numeric'
+                                                                        });
+                                                                        return (
+                                                                            <div key={task.id} style={{
+                                                                                marginBottom: '8px',
+                                                                                paddingBottom: '8px',
+                                                                                borderBottom: '1px solid #f3f4f6',
+                                                                                fontSize: '14px'
+                                                                            }}>
+                                                                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+                                                                                    <div style={{flex: 1}}>
+                                                                                        <span>{task.title}</span>
+                                                                                        <div style={{
+                                                                                            fontSize: '12px',
+                                                                                            color: '#6b7280',
+                                                                                            marginTop: '2px'
+                                                                                        }}>
+                                                                                            {dateStr}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <span style={{fontWeight: 600, marginLeft: '12px'}}>
+                                                                                        {parseFloat(task.actualTime).toFixed(2)}h
+                                                                                    </span>
+                                                                                </div>
+                                                                                {task.billable && (
+                                                                                    <span style={{
+                                                                                        fontSize: '11px',
+                                                                                        padding: '2px 6px',
+                                                                                        borderRadius: '4px',
+                                                                                        background: '#d1fae5',
+                                                                                        color: '#065f46',
+                                                                                        fontWeight: 600
+                                                                                    }}>
+                                                                                    $ Billable
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })
+                                                )}
+
+                                                <div style={{display: 'flex', justifyContent: 'flex-end', marginTop: '20px'}}>
+                                                    <button
+                                                        onClick={() => setShowBillingView(false)}
+                                                        style={{
+                                                            padding: '10px 20px',
+                                                            background: '#6b7280',
+                                                            color: 'white',
+                                                            border: 'none',
+                                                            borderRadius: '8px',
+                                                            cursor: 'pointer',
+                                                            fontWeight: 600
+                                                        }}
+                                                    >
+                                                        Close
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Task Breakdown Modal */}
+                        {showBreakdownModal && taskToBreakdown && (
+                            <div style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: 'rgba(0, 0, 0, 0.5)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 1000
+                            }} onClick={() => !isBreakingDown && setShowBreakdownModal(false)}>
+                                <div style={{
+                                    background: 'white',
+                                    borderRadius: '16px',
+                                    padding: '30px',
+                                    maxWidth: '600px',
+                                    width: '90%',
+                                    maxHeight: '80vh',
+                                    overflowY: 'auto'
+                                }} onClick={(e) => e.stopPropagation()}>
+                                    <h3 style={{marginBottom: '15px', color: '#333'}}>Break Down Task</h3>
+                                    <p style={{marginBottom: '15px', padding: '12px', background: '#f9fafb', borderRadius: '8px', fontSize: '15px'}}>
+                                        <strong>{taskToBreakdown.title}</strong>
+                                    </p>
+
+                                    {isBreakingDown ? (
+                                        <div style={{textAlign: 'center', padding: '40px 20px'}}>
+                                            <p style={{fontSize: '16px', color: '#6b7280', marginBottom: '10px'}}>
+                                                Breaking this down into smaller steps...
+                                            </p>
+                                            <p style={{fontSize: '14px', color: '#9ca3af'}}>
+                                                The AI is thinking...
+                                            </p>
+                                        </div>
+                                    ) : breakdownSubtasks.length > 0 ? (
+                                        <div>
+                                            <h4 style={{fontSize: '15px', marginBottom: '12px', color: '#333'}}>
+                                                Suggested Steps:
+                                            </h4>
+                                            <ol style={{marginBottom: '20px', paddingLeft: '24px'}}>
+                                                {breakdownSubtasks.map((subtask, index) => (
+                                                    <li key={index} style={{
+                                                        marginBottom: '8px',
+                                                        fontSize: '14px',
+                                                        lineHeight: '1.5',
+                                                        color: '#374151'
+                                                    }}>
+                                                        {subtask}
+                                                    </li>
+                                                ))}
+                                            </ol>
+                                            <div style={{display: 'flex', gap: '10px', justifyContent: 'flex-end'}}>
+                                                <button
+                                                    onClick={() => {
+                                                        setShowBreakdownModal(false);
+                                                        setTaskToBreakdown(null);
+                                                        setBreakdownSubtasks([]);
+                                                    }}
+                                                    style={{
+                                                        padding: '10px 20px',
+                                                        background: '#6b7280',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        borderRadius: '8px',
+                                                        cursor: 'pointer',
+                                                        fontWeight: 600
+                                                    }}
+                                                >
+                                                    Cancel
+                                                </button>
+                                                <button
+                                                    onClick={addSubtasksToList}
+                                                    style={{
+                                                        padding: '10px 20px',
+                                                        background: '#8b5cf6',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        borderRadius: '8px',
+                                                        cursor: 'pointer',
+                                                        fontWeight: 600
+                                                    }}
+                                                >
+                                                    Add These Steps as Tasks
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

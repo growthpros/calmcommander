@@ -168,6 +168,11 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Calm Commander is running' });
 });
 
+// NEW: Serve fresh app.html (uncached version)
+app.get('/fresh', (req, res) => {
+  res.sendFile(__dirname + '/public/app.html');
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🧘 Calm Commander server running on http://0.0.0.0:${PORT}`);
 });
