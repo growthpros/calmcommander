@@ -8,7 +8,17 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
+
+// Disable caching for static files (prevents Replit proxy from caching)
+app.use(express.static('public', {
+    maxAge: 0,
+    etag: false,
+    setHeaders: (res, path) => {
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.set('Pragma', 'no-cache');
+        res.set('Expires', '0');
+    }
+}));
 
 // System prompts for each mode
 const SYSTEM_PROMPTS = {
