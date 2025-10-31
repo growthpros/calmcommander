@@ -1770,7 +1770,7 @@ Format your response as a simple numbered list, one step per line.`;
                                                                 background: task.spoonsRequired === 'low' ? '#fee2e2' : task.spoonsRequired === 'high' ? '#d1fae5' : '#fef3c7',
                                                                 color: task.spoonsRequired === 'low' ? '#991b1b' : task.spoonsRequired === 'high' ? '#065f46' : '#92400e'
                                                             }}>
-                                                                {task.spoonsRequired || 'medium'} 🥄
+                                                                {task.spoonsRequired === 'low' ? '1' : task.spoonsRequired === 'high' ? '3' : '2'} 🥄 {task.spoonsRequired || 'medium'}
                                                             </span>
                                                             {task.client && (
                                                                 <span style={{
