@@ -2869,6 +2869,8 @@ Format your response as a simple numbered list, one step per line.`;
                             // Count tasks per view
                             const todayCount = tasks.filter(t => t.view === 'today').length;
                             const weekCount = tasks.filter(t => t.view === 'this-week').length;
+                            const nextWeekCount = tasks.filter(t => t.view === 'next-week').length;
+                            const monthCount = tasks.filter(t => t.view === 'this-month').length;
                             const laterCount = tasks.filter(t => t.view === 'later').length;
 
                             return (
@@ -2912,6 +2914,36 @@ Format your response as a simple numbered list, one step per line.`;
                                             This Week ({weekCount})
                                         </button>
                                         <button
+                                            onClick={() => setCurrentView('next-week')}
+                                            style={{
+                                                padding: '8px 16px',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                borderBottom: currentView === 'next-week' ? '3px solid #667eea' : '3px solid transparent',
+                                                fontSize: '15px',
+                                                fontWeight: 600,
+                                                color: currentView === 'next-week' ? '#667eea' : '#6b7280',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            Next Week ({nextWeekCount})
+                                        </button>
+                                        <button
+                                            onClick={() => setCurrentView('this-month')}
+                                            style={{
+                                                padding: '8px 16px',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                borderBottom: currentView === 'this-month' ? '3px solid #667eea' : '3px solid transparent',
+                                                fontSize: '15px',
+                                                fontWeight: 600,
+                                                color: currentView === 'this-month' ? '#667eea' : '#6b7280',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            This Month ({monthCount})
+                                        </button>
+                                        <button
                                             onClick={() => setCurrentView('later')}
                                             style={{
                                                 padding: '8px 16px',
@@ -2929,7 +2961,10 @@ Format your response as a simple numbered list, one step per line.`;
                                     </div>
 
                                     <h3 style={{marginBottom: '15px'}}>
-                                        {currentView === 'today' ? 'Today' : currentView === 'this-week' ? 'This Week' : 'Later'}
+                                        {currentView === 'today' ? 'Today' :
+                                         currentView === 'this-week' ? 'This Week' :
+                                         currentView === 'next-week' ? 'Next Week' :
+                                         currentView === 'this-month' ? 'This Month' : 'Later'}
                                         {' '}({filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''} {dailyEnergy && `for ${dailyEnergy.level} energy`})
                                     </h3>
 
@@ -3259,6 +3294,8 @@ Format your response as a simple numbered list, one step per line.`;
                                                             >
                                                                 <option value="today">Today</option>
                                                                 <option value="this-week">This Week</option>
+                                                                <option value="next-week">Next Week</option>
+                                                                <option value="this-month">This Month</option>
                                                                 <option value="later">Later</option>
                                                             </select>
                                                             {!task.hasSubtasks && (
