@@ -482,6 +482,21 @@
                 const now = new Date();
                 return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
             });
+
+            // New Task Form State
+            const [newTaskTitle, setNewTaskTitle] = useState('');
+            const [newTaskCategory, setNewTaskCategory] = useState('');
+            const [newTaskUrgency, setNewTaskUrgency] = useState('normal');
+            const [newTaskSpoons, setNewTaskSpoons] = useState('medium');
+            const [newTaskFocus, setNewTaskFocus] = useState('medium');
+            const [newTaskView, setNewTaskView] = useState('later');
+            const [newTaskStatus, setNewTaskStatus] = useState('active');
+            const [newTaskWaitingFor, setNewTaskWaitingFor] = useState('');
+            const [newTaskDueDate, setNewTaskDueDate] = useState('');
+            const [newTaskClient, setNewTaskClient] = useState('');
+            const [newTaskBillable, setNewTaskBillable] = useState(false);
+            const [newTaskEstimate, setNewTaskEstimate] = useState(null);
+            const [categories, setCategories] = useState([]);
             const chatEndRef = useRef(null);
 
             // Load from localStorage on mount
@@ -586,6 +601,9 @@
                         { id: 'household', name: 'Household', icon: '🏡', color: '#8B572A' }
                     ];
                     localStorage.setItem('ccCategories', JSON.stringify(defaultCategories));
+                    setCategories(defaultCategories);
+                } else {
+                    setCategories(JSON.parse(savedCategories));
                 }
 
                 // Add welcome message if first time
@@ -711,6 +729,44 @@
                 };
                 setDailyEnergy(energy);
                 localStorage.setItem('ccDailyEnergy', JSON.stringify(energy));
+            };
+
+            // Handle new task form submission
+            const handleNewTaskSubmit = () => {
+                if (!newTaskTitle.trim()) {
+                    alert('Please enter a task title');
+                    return;
+                }
+
+                // Add the task with all metadata
+                addTask(
+                    newTaskTitle.trim(),
+                    newTaskCategory || 'Uncategorized',
+                    newTaskSpoons,
+                    newTaskView,
+                    newTaskClient.trim(),
+                    newTaskBillable,
+                    newTaskEstimate,
+                    newTaskUrgency,
+                    newTaskFocus,
+                    newTaskWaitingFor.trim(),
+                    newTaskDueDate || null
+                );
+
+                // Reset form
+                setNewTaskTitle('');
+                setNewTaskCategory('');
+                setNewTaskUrgency('normal');
+                setNewTaskSpoons('medium');
+                setNewTaskFocus('medium');
+                setNewTaskView('later');
+                setNewTaskStatus('active');
+                setNewTaskWaitingFor('');
+                setNewTaskDueDate('');
+                setNewTaskClient('');
+                setNewTaskBillable(false);
+                setNewTaskEstimate(null);
+                setShowAddTask(false);
             };
 
             const handleBulkUpload = () => {
@@ -1370,101 +1426,371 @@ Format your response as a simple numbered list, one step per line.`;
                             </button>
 
                             {showAddTask && (
-                                <div style={{display: 'flex', gap: '10px'}}>
-                                    <button
-                                    style={{
-                                        flex: 1,
-                                        padding: '10px',
-                                        background: '#fee2e2',
-                                        color: '#991b1b',
-                                        border: '2px solid #ef4444',
-                                        borderRadius: '8px',
-                                        fontWeight: 600,
-                                        cursor: 'pointer',
-                                        fontSize: '13px'
-                                    }}
-                                    onClick={() => {
-                                        const taskTitle = prompt('Task name:');
-                                        if (taskTitle && taskTitle.trim()) {
-                                            const client = prompt('Client name (or leave blank):') || '';
-                                            const billable = client ? confirm('Is this billable work?') : false;
-                                            setPendingTask({
-                                                title: taskTitle.trim(),
-                                                category: 'Uncategorized',
-                                                spoonsRequired: 'low',
-                                                view: 'later',
-                                                client: client.trim(),
-                                                billable: billable
-                                            });
-                                            setShowEstimateModal(true);
-                                        }
-                                    }}
-                                >
-                                    + Low Energy
-                                </button>
-                                <button
-                                    style={{
-                                        flex: 1,
-                                        padding: '10px',
-                                        background: '#fef3c7',
-                                        color: '#92400e',
-                                        border: '2px solid #f59e0b',
-                                        borderRadius: '8px',
-                                        fontWeight: 600,
-                                        cursor: 'pointer',
-                                        fontSize: '13px'
-                                    }}
-                                    onClick={() => {
-                                        const taskTitle = prompt('Task name:');
-                                        if (taskTitle && taskTitle.trim()) {
-                                            const client = prompt('Client name (or leave blank):') || '';
-                                            const billable = client ? confirm('Is this billable work?') : false;
-                                            setPendingTask({
-                                                title: taskTitle.trim(),
-                                                category: 'Uncategorized',
-                                                spoonsRequired: 'medium',
-                                                view: 'later',
-                                                client: client.trim(),
-                                                billable: billable
-                                            });
-                                            setShowEstimateModal(true);
-                                        }
-                                    }}
-                                >
-                                    + Medium Energy
-                                </button>
-                                <button
-                                    style={{
-                                        flex: 1,
-                                        padding: '10px',
-                                        background: '#d1fae5',
-                                        color: '#065f46',
-                                        border: '2px solid #22c55e',
-                                        borderRadius: '8px',
-                                        fontWeight: 600,
-                                        cursor: 'pointer',
-                                        fontSize: '13px'
-                                    }}
-                                    onClick={() => {
-                                        const taskTitle = prompt('Task name:');
-                                        if (taskTitle && taskTitle.trim()) {
-                                            const client = prompt('Client name (or leave blank):') || '';
-                                            const billable = client ? confirm('Is this billable work?') : false;
-                                            setPendingTask({
-                                                title: taskTitle.trim(),
-                                                category: 'Uncategorized',
-                                                spoonsRequired: 'high',
-                                                view: 'later',
-                                                client: client.trim(),
-                                                billable: billable
-                                            });
-                                            setShowEstimateModal(true);
-                                        }
-                                    }}
-                                >
-                                    + High Energy
-                                </button>
-                            </div>
+                                <div style={{
+                                    padding: '16px',
+                                    background: '#f9fafb',
+                                    border: '2px solid #e5e7eb',
+                                    borderRadius: '8px'
+                                }}>
+                                    {/* Task Title */}
+                                    <div style={{marginBottom: '12px'}}>
+                                        <label style={{display: 'block', marginBottom: '4px', fontWeight: 600, fontSize: '13px'}}>
+                                            Task Name *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={newTaskTitle}
+                                            onChange={(e) => setNewTaskTitle(e.target.value)}
+                                            placeholder="e.g., Call client about proposal"
+                                            style={{
+                                                width: '100%',
+                                                padding: '8px 12px',
+                                                border: '2px solid #d1d5db',
+                                                borderRadius: '6px',
+                                                fontSize: '14px'
+                                            }}
+                                        />
+                                    </div>
+
+                                    {/* Row 1: Category, Urgency */}
+                                    <div style={{display: 'flex', gap: '12px', marginBottom: '12px'}}>
+                                        <div style={{flex: 1}}>
+                                            <label style={{display: 'block', marginBottom: '4px', fontWeight: 600, fontSize: '13px'}}>
+                                                Category
+                                            </label>
+                                            <select
+                                                value={newTaskCategory}
+                                                onChange={(e) => setNewTaskCategory(e.target.value)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '8px 12px',
+                                                    border: '2px solid #d1d5db',
+                                                    borderRadius: '6px',
+                                                    fontSize: '14px'
+                                                }}
+                                            >
+                                                <option value="">Uncategorized</option>
+                                                {categories.map(cat => (
+                                                    <option key={cat.id} value={cat.name}>{cat.icon} {cat.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div style={{flex: 1}}>
+                                            <label style={{display: 'block', marginBottom: '4px', fontWeight: 600, fontSize: '13px'}}>
+                                                Urgency
+                                            </label>
+                                            <select
+                                                value={newTaskUrgency}
+                                                onChange={(e) => setNewTaskUrgency(e.target.value)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '8px 12px',
+                                                    border: '2px solid #d1d5db',
+                                                    borderRadius: '6px',
+                                                    fontSize: '14px'
+                                                }}
+                                            >
+                                                <option value="low">🌊 Low</option>
+                                                <option value="normal">📌 Normal</option>
+                                                <option value="important">⚠️ Important</option>
+                                                <option value="critical">🔥 Critical</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Row 2: Spoons, Focus */}
+                                    <div style={{display: 'flex', gap: '12px', marginBottom: '12px'}}>
+                                        <div style={{flex: 1}}>
+                                            <label style={{display: 'block', marginBottom: '4px', fontWeight: 600, fontSize: '13px'}}>
+                                                Spoons (Energy)
+                                            </label>
+                                            <select
+                                                value={newTaskSpoons}
+                                                onChange={(e) => setNewTaskSpoons(e.target.value)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '8px 12px',
+                                                    border: '2px solid #d1d5db',
+                                                    borderRadius: '6px',
+                                                    fontSize: '14px'
+                                                }}
+                                            >
+                                                <option value="low">1 🥄 Low</option>
+                                                <option value="medium">2 🥄 Medium</option>
+                                                <option value="high">3 🥄 High</option>
+                                            </select>
+                                        </div>
+                                        <div style={{flex: 1}}>
+                                            <label style={{display: 'block', marginBottom: '4px', fontWeight: 600, fontSize: '13px'}}>
+                                                Focus Level
+                                            </label>
+                                            <select
+                                                value={newTaskFocus}
+                                                onChange={(e) => setNewTaskFocus(e.target.value)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '8px 12px',
+                                                    border: '2px solid #d1d5db',
+                                                    borderRadius: '6px',
+                                                    fontSize: '14px'
+                                                }}
+                                            >
+                                                <option value="low">Low Focus</option>
+                                                <option value="medium">Medium Focus</option>
+                                                <option value="high">High Focus</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Row 3: When, Status */}
+                                    <div style={{display: 'flex', gap: '12px', marginBottom: '12px'}}>
+                                        <div style={{flex: 1}}>
+                                            <label style={{display: 'block', marginBottom: '4px', fontWeight: 600, fontSize: '13px'}}>
+                                                When
+                                            </label>
+                                            <select
+                                                value={newTaskView}
+                                                onChange={(e) => setNewTaskView(e.target.value)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '8px 12px',
+                                                    border: '2px solid #d1d5db',
+                                                    borderRadius: '6px',
+                                                    fontSize: '14px'
+                                                }}
+                                            >
+                                                <option value="today">🔥 Today</option>
+                                                <option value="this-week">📅 This Week</option>
+                                                <option value="next-week">📆 Next Week</option>
+                                                <option value="this-month">🗓️ This Month</option>
+                                                <option value="later">🌊 Later</option>
+                                            </select>
+                                        </div>
+                                        <div style={{flex: 1}}>
+                                            <label style={{display: 'block', marginBottom: '4px', fontWeight: 600, fontSize: '13px'}}>
+                                                Status
+                                            </label>
+                                            <select
+                                                value={newTaskStatus}
+                                                onChange={(e) => setNewTaskStatus(e.target.value)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '8px 12px',
+                                                    border: '2px solid #d1d5db',
+                                                    borderRadius: '6px',
+                                                    fontSize: '14px'
+                                                }}
+                                            >
+                                                <option value="active">✓ Active</option>
+                                                <option value="waiting">⏳ Waiting</option>
+                                                <option value="blocked">🚫 Blocked</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Conditional: Waiting For */}
+                                    {newTaskStatus === 'waiting' && (
+                                        <div style={{marginBottom: '12px'}}>
+                                            <label style={{display: 'block', marginBottom: '4px', fontWeight: 600, fontSize: '13px'}}>
+                                                Waiting For
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={newTaskWaitingFor}
+                                                onChange={(e) => setNewTaskWaitingFor(e.target.value)}
+                                                placeholder="e.g., Client approval, Team feedback"
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '8px 12px',
+                                                    border: '2px solid #d1d5db',
+                                                    borderRadius: '6px',
+                                                    fontSize: '14px'
+                                                }}
+                                            />
+                                        </div>
+                                    )}
+
+                                    {/* Due Date */}
+                                    <div style={{marginBottom: '12px'}}>
+                                        <label style={{display: 'block', marginBottom: '4px', fontWeight: 600, fontSize: '13px'}}>
+                                            Due Date (Optional)
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={newTaskDueDate}
+                                            onChange={(e) => setNewTaskDueDate(e.target.value)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '8px 12px',
+                                                border: '2px solid #d1d5db',
+                                                borderRadius: '6px',
+                                                fontSize: '14px'
+                                            }}
+                                        />
+                                    </div>
+
+                                    {/* Client & Billing */}
+                                    <div style={{display: 'flex', gap: '12px', marginBottom: '12px'}}>
+                                        <div style={{flex: 1}}>
+                                            <label style={{display: 'block', marginBottom: '4px', fontWeight: 600, fontSize: '13px'}}>
+                                                Client (Optional)
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={newTaskClient}
+                                                onChange={(e) => setNewTaskClient(e.target.value)}
+                                                placeholder="Client name"
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '8px 12px',
+                                                    border: '2px solid #d1d5db',
+                                                    borderRadius: '6px',
+                                                    fontSize: '14px'
+                                                }}
+                                            />
+                                        </div>
+                                        <div style={{flex: 1, display: 'flex', alignItems: 'flex-end'}}>
+                                            <label style={{display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 0'}}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={newTaskBillable}
+                                                    onChange={(e) => setNewTaskBillable(e.target.checked)}
+                                                    style={{cursor: 'pointer'}}
+                                                />
+                                                <span style={{fontWeight: 600, fontSize: '13px'}}>Billable</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    {/* Time Estimate */}
+                                    <div style={{marginBottom: '16px'}}>
+                                        <label style={{display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '13px'}}>
+                                            Time Estimate (Optional)
+                                        </label>
+                                        <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
+                                            <button
+                                                onClick={() => setNewTaskEstimate(0.25)}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    background: newTaskEstimate === 0.25 ? '#667eea' : 'white',
+                                                    color: newTaskEstimate === 0.25 ? 'white' : '#333',
+                                                    border: '2px solid ' + (newTaskEstimate === 0.25 ? '#667eea' : '#d1d5db'),
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '12px',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                15min
+                                            </button>
+                                            <button
+                                                onClick={() => setNewTaskEstimate(0.5)}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    background: newTaskEstimate === 0.5 ? '#667eea' : 'white',
+                                                    color: newTaskEstimate === 0.5 ? 'white' : '#333',
+                                                    border: '2px solid ' + (newTaskEstimate === 0.5 ? '#667eea' : '#d1d5db'),
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '12px',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                30min
+                                            </button>
+                                            <button
+                                                onClick={() => setNewTaskEstimate(1)}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    background: newTaskEstimate === 1 ? '#667eea' : 'white',
+                                                    color: newTaskEstimate === 1 ? 'white' : '#333',
+                                                    border: '2px solid ' + (newTaskEstimate === 1 ? '#667eea' : '#d1d5db'),
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '12px',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                1h
+                                            </button>
+                                            <button
+                                                onClick={() => setNewTaskEstimate(2)}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    background: newTaskEstimate === 2 ? '#667eea' : 'white',
+                                                    color: newTaskEstimate === 2 ? 'white' : '#333',
+                                                    border: '2px solid ' + (newTaskEstimate === 2 ? '#667eea' : '#d1d5db'),
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '12px',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                2h
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    const time = prompt('Enter hours (e.g., 3.5):');
+                                                    if (time && !isNaN(parseFloat(time))) {
+                                                        setNewTaskEstimate(parseFloat(time));
+                                                    }
+                                                }}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    background: 'white',
+                                                    color: '#333',
+                                                    border: '2px solid #d1d5db',
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '12px',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                Custom
+                                            </button>
+                                        </div>
+                                        {newTaskEstimate && (
+                                            <div style={{marginTop: '4px', fontSize: '12px', color: '#6b7280'}}>
+                                                Selected: {newTaskEstimate < 1 ? `${newTaskEstimate * 60}min` : `${newTaskEstimate}h`}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Action Buttons */}
+                                    <div style={{display: 'flex', gap: '10px'}}>
+                                        <button
+                                            onClick={handleNewTaskSubmit}
+                                            style={{
+                                                flex: 1,
+                                                padding: '12px',
+                                                background: '#667eea',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '8px',
+                                                fontWeight: 600,
+                                                cursor: 'pointer',
+                                                fontSize: '14px'
+                                            }}
+                                        >
+                                            Add Task
+                                        </button>
+                                        <button
+                                            onClick={() => setShowAddTask(false)}
+                                            style={{
+                                                padding: '12px 20px',
+                                                background: 'white',
+                                                color: '#6b7280',
+                                                border: '2px solid #d1d5db',
+                                                borderRadius: '8px',
+                                                fontWeight: 600,
+                                                cursor: 'pointer',
+                                                fontSize: '14px'
+                                            }}
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
                             )}
                         </div>
 
