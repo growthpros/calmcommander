@@ -1040,6 +1040,231 @@
             );
         };
 
+        // Advanced Add Task Modal Component
+        const AdvancedAddTaskModal = ({ isOpen, onClose, onAdd }) => {
+            if (!isOpen) return null;
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!newTaskTitle.trim()) {
+                    alert('Please enter a task title');
+                    return;
+                }
+
+                onAdd();
+
+                // Reset form
+                setNewTaskTitle('');
+                setNewTaskCategory('Uncategorized');
+                setNewTaskEnergy('medium');
+                setNewTaskView('later');
+                setNewTaskClient('');
+                setNewTaskBillable(false);
+                setNewTaskUrgency('normal');
+                setNewTaskFocusLevel('medium');
+                setNewTaskWaitingFor('');
+                setNewTaskDueDate('');
+
+                onClose();
+            };
+
+            return (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    style={{ background: 'rgba(0, 0, 0, 0.6)' }}
+                    onClick={onClose}
+                >
+                    <div
+                        className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                            <h2 className="text-xl font-semibold text-gray-900">Advanced Add Task</h2>
+                            <p className="text-sm text-gray-600 mt-1">All fields help with planning and prioritization</p>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
+                            {/* Task Title */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Task Title *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={newTaskTitle}
+                                    onChange={(e) => setNewTaskTitle(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="What needs to be done?"
+                                    required
+                                />
+                            </div>
+
+                            {/* Row 1: Category and Energy */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Category
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={newTaskCategory}
+                                        onChange={(e) => setNewTaskCategory(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="e.g., Work, Personal"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Energy Level
+                                    </label>
+                                    <select
+                                        value={newTaskEnergy}
+                                        onChange={(e) => setNewTaskEnergy(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="low">Low Energy</option>
+                                        <option value="medium">Medium Energy</option>
+                                        <option value="high">High Energy</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Row 2: Urgency and Focus Level */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Urgency
+                                        <span className="text-xs text-gray-500 ml-1">(for prioritization)</span>
+                                    </label>
+                                    <select
+                                        value={newTaskUrgency}
+                                        onChange={(e) => setNewTaskUrgency(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="low">🔵 Low - Can wait</option>
+                                        <option value="normal">⚪ Normal - Standard priority</option>
+                                        <option value="important">🔴 Important - Should do soon</option>
+                                        <option value="critical">⚠️ Critical - Do ASAP</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Focus Level Required
+                                        <span className="text-xs text-gray-500 ml-1">(affects spoons)</span>
+                                    </label>
+                                    <select
+                                        value={newTaskFocusLevel}
+                                        onChange={(e) => setNewTaskFocusLevel(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="low">Low - Can multitask</option>
+                                        <option value="medium">Medium - Need some focus</option>
+                                        <option value="high">High - Deep concentration</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Row 3: Client and Billable */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Client (optional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={newTaskClient}
+                                        onChange={(e) => setNewTaskClient(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Client name"
+                                    />
+                                </div>
+
+                                <div className="flex items-center mt-6">
+                                    <input
+                                        type="checkbox"
+                                        checked={newTaskBillable}
+                                        onChange={(e) => setNewTaskBillable(e.target.checked)}
+                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                    />
+                                    <label className="ml-2 text-sm text-gray-700">
+                                        Billable work
+                                    </label>
+                                </div>
+                            </div>
+
+                            {/* Row 4: Due Date and Timeframe */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Due Date (optional)
+                                        <span className="text-xs text-gray-500 ml-1">(auto-sets timeframe)</span>
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={newTaskDueDate}
+                                        onChange={(e) => setNewTaskDueDate(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Timeframe
+                                        <span className="text-xs text-gray-500 ml-1">(or manual)</span>
+                                    </label>
+                                    <select
+                                        value={newTaskView}
+                                        onChange={(e) => setNewTaskView(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="today">🔥 Today</option>
+                                        <option value="this-week">📅 This Week</option>
+                                        <option value="next-week">📆 Next Week</option>
+                                        <option value="this-month">🗓️ This Month</option>
+                                        <option value="later">🌊 Later</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Waiting For */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Waiting For (optional)
+                                    <span className="text-xs text-gray-500 ml-1">(track dependencies)</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={newTaskWaitingFor}
+                                    onChange={(e) => setNewTaskWaitingFor(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="e.g., API team response, client approval"
+                                />
+                            </div>
+
+                            {/* Buttons */}
+                            <div className="flex gap-3 pt-4 border-t border-gray-200">
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 font-medium"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
+                                >
+                                    Add Task
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
         // ============================================
         // END REUSABLE COMPONENTS
         // ============================================
@@ -1281,6 +1506,20 @@
             const [showEstimateModal, setShowEstimateModal] = useState(false);
             const [pendingTask, setPendingTask] = useState(null);
             const [showAddTask, setShowAddTask] = useState(false);
+            const [showAdvancedAddTask, setShowAdvancedAddTask] = useState(false);
+
+            // Advanced task form states
+            const [newTaskTitle, setNewTaskTitle] = useState('');
+            const [newTaskCategory, setNewTaskCategory] = useState('Uncategorized');
+            const [newTaskEnergy, setNewTaskEnergy] = useState('medium');
+            const [newTaskView, setNewTaskView] = useState('later');
+            const [newTaskClient, setNewTaskClient] = useState('');
+            const [newTaskBillable, setNewTaskBillable] = useState(false);
+            const [newTaskUrgency, setNewTaskUrgency] = useState('normal');
+            const [newTaskFocusLevel, setNewTaskFocusLevel] = useState('medium');
+            const [newTaskWaitingFor, setNewTaskWaitingFor] = useState('');
+            const [newTaskDueDate, setNewTaskDueDate] = useState('');
+
             const [billingMonth, setBillingMonth] = useState(() => {
                 const now = new Date();
                 return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -1554,21 +1793,56 @@
                 return mapping[energyRequired] || 2;
             };
 
+            // Calculate timeframe from due date
+            const getTimeframeFromDueDate = (dueDate) => {
+                if (!dueDate) return null;
+
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const due = new Date(dueDate);
+                due.setHours(0, 0, 0, 0);
+                const daysUntil = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+
+                if (daysUntil <= 0) return 'today';           // Overdue or today
+                if (daysUntil <= 7) return 'this-week';       // Within a week
+                if (daysUntil <= 14) return 'next-week';      // Next week
+                if (daysUntil <= 30) return 'this-month';     // This month
+                return 'later';                               // Future
+            };
+
+            // Adjust spoons based on focus level required
+            const adjustSpoonsForFocusLevel = (baseSpoons, focusLevel) => {
+                const focusMultiplier = {
+                    'high': 1.5,    // High focus = 50% more spoons
+                    'medium': 1.0,  // Default
+                    'low': 0.75     // Low focus = 25% fewer spoons
+                };
+                return Math.ceil(baseSpoons * (focusMultiplier[focusLevel] || 1.0));
+            };
+
             // Task management functions
-            const addTask = (title, category = 'Uncategorized', energyRequired = 'medium', view = 'later', client = '', billable = false, estimatedTime = null, priority = 'medium') => {
+            const addTask = (title, category = 'Uncategorized', energyRequired = 'medium', view = 'later', client = '', billable = false, estimatedTime = null, priority = 'medium', urgency = 'normal', focusLevel = 'medium', waitingFor = '', dueDate = '') => {
                 // AI estimate spoons and time if not provided
-                const spoonsRequired = estimateSpoons(title);
+                const baseSpoons = estimateSpoons(title);
+                const adjustedSpoons = adjustSpoonsForFocusLevel(baseSpoons, focusLevel);
                 const estimatedMinutes = estimatedTime !== null ? estimatedTime : estimateTimeMinutes(title);
+
+                // Auto-calculate timeframe from due date if provided
+                const calculatedView = dueDate ? getTimeframeFromDueDate(dueDate) : view;
 
                 const newTask = {
                     id: Date.now(),
                     title: title,
                     category: category,
                     energyRequired: energyRequired,
-                    spoonsRequired: spoonsRequired,  // NEW: AI-estimated spoons
+                    spoonsRequired: adjustedSpoons,  // NEW: AI-estimated spoons adjusted for focus level
                     estimatedTime: estimatedMinutes,  // Time in minutes
                     priority: priority,  // NEW: low/medium/high
-                    view: view,
+                    urgency: urgency,  // NEW: critical/important/normal/low
+                    focusLevel: focusLevel,  // NEW: high/medium/low
+                    waitingFor: waitingFor,  // NEW: dependency tracking
+                    dueDate: dueDate,  // NEW: due date for auto-promotion
+                    view: calculatedView || view,
                     client: client,
                     billable: billable,
                     status: 'active',
@@ -1716,9 +1990,28 @@
             // ============================================
 
             const updateTaskAttribute = (taskId, attribute, value) => {
-                const updatedTasks = tasks.map(t =>
-                    t.id === taskId ? { ...t, [attribute]: value } : t
-                );
+                const updatedTasks = tasks.map(t => {
+                    if (t.id === taskId) {
+                        const updates = { [attribute]: value };
+
+                        // When focus level changes, recalculate spoons
+                        if (attribute === 'focusLevel') {
+                            const baseSpoons = estimateSpoons(t.title);
+                            updates.spoonsRequired = adjustSpoonsForFocusLevel(baseSpoons, value);
+                        }
+
+                        // When due date changes, auto-update timeframe
+                        if (attribute === 'dueDate') {
+                            const newTimeframe = getTimeframeFromDueDate(value);
+                            if (newTimeframe) {
+                                updates.view = newTimeframe;
+                            }
+                        }
+
+                        return { ...t, ...updates };
+                    }
+                    return t;
+                });
                 setTasks(updatedTasks);
                 localStorage.setItem('calmCommanderTasks', JSON.stringify(updatedTasks));
             };
@@ -2814,6 +3107,25 @@ Format your response as a simple numbered list, one step per line.`;
                                     + High Energy
                                 </button>
                             </div>
+
+                            {/* Advanced Add Task Button */}
+                            <button
+                                onClick={() => setShowAdvancedAddTask(true)}
+                                style={{
+                                    width: '100%',
+                                    padding: '10px',
+                                    background: '#ede9fe',
+                                    color: '#5b21b6',
+                                    border: '2px dashed #8b5cf6',
+                                    borderRadius: '8px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    fontSize: '13px',
+                                    marginTop: '10px'
+                                }}
+                            >
+                                ⚙️ Advanced Add Task (with all metadata)
+                            </button>
                             )}
                         </div>
 
@@ -3279,6 +3591,97 @@ Format your response as a simple numbered list, one step per line.`;
                                                             >
                                                                 {task.billable ? '$ Billable' : 'Non-billable'}
                                                             </span>
+
+                                                            {/* URGENCY DROPDOWN */}
+                                                            <select
+                                                                value={task.urgency || 'normal'}
+                                                                onChange={(e) => updateTaskAttribute(task.id, 'urgency', e.target.value)}
+                                                                style={{
+                                                                    marginLeft: '6px',
+                                                                    fontSize: '11px',
+                                                                    padding: '2px 6px',
+                                                                    borderRadius: '4px',
+                                                                    background: task.urgency === 'critical' ? '#fee2e2' : task.urgency === 'important' ? '#fef3c7' : task.urgency === 'low' ? '#dbeafe' : '#f3f4f6',
+                                                                    color: task.urgency === 'critical' ? '#991b1b' : task.urgency === 'important' ? '#92400e' : task.urgency === 'low' ? '#1e40af' : '#6b7280',
+                                                                    fontWeight: 600,
+                                                                    border: '1px solid ' + (task.urgency === 'critical' ? '#fecaca' : task.urgency === 'important' ? '#fde68a' : task.urgency === 'low' ? '#93c5fd' : '#e5e7eb'),
+                                                                    cursor: 'pointer'
+                                                                }}
+                                                                title="Task urgency (affects prioritization)"
+                                                            >
+                                                                <option value="low">🔵 Low</option>
+                                                                <option value="normal">⚪ Normal</option>
+                                                                <option value="important">🔴 Important</option>
+                                                                <option value="critical">⚠️ Critical</option>
+                                                            </select>
+
+                                                            {/* FOCUS LEVEL DROPDOWN */}
+                                                            <select
+                                                                value={task.focusLevel || 'medium'}
+                                                                onChange={(e) => updateTaskAttribute(task.id, 'focusLevel', e.target.value)}
+                                                                style={{
+                                                                    marginLeft: '6px',
+                                                                    fontSize: '11px',
+                                                                    padding: '2px 6px',
+                                                                    borderRadius: '4px',
+                                                                    background: task.focusLevel === 'high' ? '#fef3c7' : task.focusLevel === 'low' ? '#d1fae5' : '#f3f4f6',
+                                                                    color: task.focusLevel === 'high' ? '#92400e' : task.focusLevel === 'low' ? '#065f46' : '#6b7280',
+                                                                    fontWeight: 600,
+                                                                    border: '1px solid ' + (task.focusLevel === 'high' ? '#fde68a' : task.focusLevel === 'low' ? '#a7f3d0' : '#e5e7eb'),
+                                                                    cursor: 'pointer'
+                                                                }}
+                                                                title="Focus level required (affects spoon cost)"
+                                                            >
+                                                                <option value="low">🧠 Low Focus</option>
+                                                                <option value="medium">🧠🧠 Med Focus</option>
+                                                                <option value="high">🧠🧠🧠 High Focus</option>
+                                                            </select>
+
+                                                            {/* WAITING FOR - Show only if populated */}
+                                                            {task.waitingFor && (
+                                                                <span
+                                                                    style={{
+                                                                        marginLeft: '6px',
+                                                                        fontSize: '11px',
+                                                                        padding: '2px 6px',
+                                                                        borderRadius: '4px',
+                                                                        background: '#fef3c7',
+                                                                        color: '#92400e',
+                                                                        fontWeight: 600,
+                                                                        cursor: 'pointer',
+                                                                        border: '1px solid #fde68a'
+                                                                    }}
+                                                                    onClick={() => {
+                                                                        const newWaiting = prompt('Waiting for:', task.waitingFor || '');
+                                                                        if (newWaiting !== null) {
+                                                                            updateTaskAttribute(task.id, 'waitingFor', newWaiting.trim());
+                                                                        }
+                                                                    }}
+                                                                    title="Click to edit dependency"
+                                                                >
+                                                                    ⏸️ {task.waitingFor}
+                                                                </span>
+                                                            )}
+
+                                                            {/* DUE DATE - Show only if set */}
+                                                            {task.dueDate && (
+                                                                <span
+                                                                    style={{
+                                                                        marginLeft: '6px',
+                                                                        fontSize: '11px',
+                                                                        padding: '2px 6px',
+                                                                        borderRadius: '4px',
+                                                                        background: '#fee2e2',
+                                                                        color: '#991b1b',
+                                                                        fontWeight: 600,
+                                                                        cursor: 'pointer',
+                                                                        border: '1px solid #fecaca'
+                                                                    }}
+                                                                    title="Click to edit due date"
+                                                                >
+                                                                    📆 {new Date(task.dueDate).toLocaleDateString()}
+                                                                </span>
+                                                            )}
                                                         </div>
                                                         <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
                                                             <select
@@ -4153,6 +4556,28 @@ Format your response as a simple numbered list, one step per line.`;
                             isOpen={showCrisisModeModal}
                             onClose={() => setShowCrisisModeModal(false)}
                             onActivate={activateCrisisMode}
+                        />
+
+                        {/* Advanced Add Task Modal */}
+                        <AdvancedAddTaskModal
+                            isOpen={showAdvancedAddTask}
+                            onClose={() => setShowAdvancedAddTask(false)}
+                            onAdd={() => {
+                                addTask(
+                                    newTaskTitle,
+                                    newTaskCategory,
+                                    newTaskEnergy,
+                                    newTaskView,
+                                    newTaskClient,
+                                    newTaskBillable,
+                                    null, // estimatedTime - let AI estimate
+                                    'medium', // priority - default
+                                    newTaskUrgency,
+                                    newTaskFocusLevel,
+                                    newTaskWaitingFor,
+                                    newTaskDueDate
+                                );
+                            }}
                         />
                     </div>
                 </div>
