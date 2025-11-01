@@ -3036,8 +3036,9 @@ Format your response as a simple numbered list, one step per line.`;
                             </button>
 
                             {showAddTask && (
-                                <div style={{display: 'flex', gap: '10px'}}>
-                                    <button
+                                <>
+                                    <div style={{display: 'flex', gap: '10px'}}>
+                                        <button
                                     style={{
                                         flex: 1,
                                         padding: '10px',
@@ -3130,26 +3131,26 @@ Format your response as a simple numbered list, one step per line.`;
                                 >
                                     + High Energy
                                 </button>
-                            </div>
+                                    </div>
 
-                            {showAddTask && (
-                                <button
-                                    onClick={() => setShowAdvancedAddTask(true)}
-                                    style={{
-                                        width: '100%',
-                                        padding: '10px',
-                                        background: '#ede9fe',
-                                        color: '#5b21b6',
-                                        border: '2px dashed #8b5cf6',
-                                        borderRadius: '8px',
-                                        fontWeight: 600,
-                                        cursor: 'pointer',
-                                        fontSize: '13px',
-                                        marginTop: '10px'
-                                    }}
-                                >
-                                    ⚙️ Advanced Add Task (with all metadata)
-                                </button>
+                                    <button
+                                        onClick={() => setShowAdvancedAddTask(true)}
+                                        style={{
+                                            width: '100%',
+                                            padding: '10px',
+                                            background: '#ede9fe',
+                                            color: '#5b21b6',
+                                            border: '2px dashed #8b5cf6',
+                                            borderRadius: '8px',
+                                            fontWeight: 600,
+                                            cursor: 'pointer',
+                                            fontSize: '13px',
+                                            marginTop: '10px'
+                                        }}
+                                    >
+                                        ⚙️ Advanced Add Task (with all metadata)
+                                    </button>
+                                </>
                             )}
                         </div>
 
