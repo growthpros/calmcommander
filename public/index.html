@@ -1551,6 +1551,8 @@
             const [pendingTask, setPendingTask] = useState(null);
             const [showAddTask, setShowAddTask] = useState(false);
             const [showAdvancedAddTask, setShowAdvancedAddTask] = useState(false);
+            const [showDatePicker, setShowDatePicker] = useState(false);
+            const [taskToEditDate, setTaskToEditDate] = useState(null);
 
             // Advanced task form states
             const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -3751,10 +3753,8 @@ Format your response as a simple numbered list, one step per line.`;
                                                                         border: '1px solid #fecaca'
                                                                     }}
                                                                     onClick={() => {
-                                                                        const newDate = prompt('Edit due date (YYYY-MM-DD):', task.dueDate || '');
-                                                                        if (newDate !== null && newDate.trim() !== '') {
-                                                                            updateTaskAttribute(task.id, 'dueDate', newDate.trim());
-                                                                        }
+                                                                        setTaskToEditDate(task);
+                                                                        setShowDatePicker(true);
                                                                     }}
                                                                     title="Click to edit due date"
                                                                 >
@@ -4685,6 +4685,101 @@ Format your response as a simple numbered list, one step per line.`;
                             newTaskTimeEstimate={newTaskTimeEstimate}
                             setNewTaskTimeEstimate={setNewTaskTimeEstimate}
                         />
+
+                        {/* Date Picker Modal */}
+                        {showDatePicker && taskToEditDate && (
+                            <div style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: 'rgba(0, 0, 0, 0.5)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 1000
+                            }} onClick={() => {
+                                setShowDatePicker(false);
+                                setTaskToEditDate(null);
+                            }}>
+                                <div style={{
+                                    background: 'white',
+                                    borderRadius: '16px',
+                                    padding: '30px',
+                                    maxWidth: '400px',
+                                    width: '90%'
+                                }} onClick={(e) => e.stopPropagation()}>
+                                    <h3 style={{marginBottom: '15px', fontSize: '18px', fontWeight: 600}}>Edit Due Date</h3>
+                                    <p style={{marginBottom: '15px', fontSize: '14px', color: '#6b7280'}}>
+                                        <strong>{taskToEditDate.title}</strong>
+                                    </p>
+                                    <div style={{marginBottom: '20px'}}>
+                                        <label style={{display: 'block', marginBottom: '10px', fontWeight: 600, fontSize: '14px'}}>
+                                            Due Date:
+                                        </label>
+                                        <input
+                                            type="date"
+                                            defaultValue={taskToEditDate.dueDate || ''}
+                                            onChange={(e) => {
+                                                if (e.target.value) {
+                                                    updateTaskAttribute(taskToEditDate.id, 'dueDate', e.target.value);
+                                                }
+                                            }}
+                                            style={{
+                                                width: '100%',
+                                                padding: '10px',
+                                                border: '2px solid #e5e7eb',
+                                                borderRadius: '8px',
+                                                fontSize: '14px',
+                                                cursor: 'pointer'
+                                            }}
+                                        />
+                                    </div>
+                                    <div style={{display: 'flex', gap: '10px'}}>
+                                        <button
+                                            onClick={() => {
+                                                updateTaskAttribute(taskToEditDate.id, 'dueDate', '');
+                                                setShowDatePicker(false);
+                                                setTaskToEditDate(null);
+                                            }}
+                                            style={{
+                                                flex: 1,
+                                                padding: '10px',
+                                                background: '#ef4444',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '8px',
+                                                cursor: 'pointer',
+                                                fontWeight: 600,
+                                                fontSize: '14px'
+                                            }}
+                                        >
+                                            Clear Date
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setShowDatePicker(false);
+                                                setTaskToEditDate(null);
+                                            }}
+                                            style={{
+                                                flex: 1,
+                                                padding: '10px',
+                                                background: '#667eea',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '8px',
+                                                cursor: 'pointer',
+                                                fontWeight: 600,
+                                                fontSize: '14px'
+                                            }}
+                                        >
+                                            Done
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             );
