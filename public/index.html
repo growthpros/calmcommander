@@ -1041,7 +1041,31 @@
         };
 
         // Advanced Add Task Modal Component
-        const AdvancedAddTaskModal = ({ isOpen, onClose, onAdd }) => {
+        const AdvancedAddTaskModal = ({
+            isOpen,
+            onClose,
+            onAdd,
+            newTaskTitle,
+            setNewTaskTitle,
+            newTaskCategory,
+            setNewTaskCategory,
+            newTaskEnergy,
+            setNewTaskEnergy,
+            newTaskView,
+            setNewTaskView,
+            newTaskClient,
+            setNewTaskClient,
+            newTaskBillable,
+            setNewTaskBillable,
+            newTaskUrgency,
+            setNewTaskUrgency,
+            newTaskFocusLevel,
+            setNewTaskFocusLevel,
+            newTaskWaitingFor,
+            setNewTaskWaitingFor,
+            newTaskDueDate,
+            setNewTaskDueDate
+        }) => {
             if (!isOpen) return null;
 
             const handleSubmit = (e) => {
@@ -4578,6 +4602,26 @@ Format your response as a simple numbered list, one step per line.`;
                                     newTaskDueDate
                                 );
                             }}
+                            newTaskTitle={newTaskTitle}
+                            setNewTaskTitle={setNewTaskTitle}
+                            newTaskCategory={newTaskCategory}
+                            setNewTaskCategory={setNewTaskCategory}
+                            newTaskEnergy={newTaskEnergy}
+                            setNewTaskEnergy={setNewTaskEnergy}
+                            newTaskView={newTaskView}
+                            setNewTaskView={setNewTaskView}
+                            newTaskClient={newTaskClient}
+                            setNewTaskClient={setNewTaskClient}
+                            newTaskBillable={newTaskBillable}
+                            setNewTaskBillable={setNewTaskBillable}
+                            newTaskUrgency={newTaskUrgency}
+                            setNewTaskUrgency={setNewTaskUrgency}
+                            newTaskFocusLevel={newTaskFocusLevel}
+                            setNewTaskFocusLevel={setNewTaskFocusLevel}
+                            newTaskWaitingFor={newTaskWaitingFor}
+                            setNewTaskWaitingFor={setNewTaskWaitingFor}
+                            newTaskDueDate={newTaskDueDate}
+                            setNewTaskDueDate={setNewTaskDueDate}
                         />
                     </div>
                 </div>
