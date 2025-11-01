@@ -1846,7 +1846,7 @@
 
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
-                const due = new Date(dueDate);
+                const due = new Date(dueDate + 'T00:00:00'); // Force local timezone
                 due.setHours(0, 0, 0, 0);
                 const daysUntil = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
 
@@ -1855,6 +1855,13 @@
                 if (daysUntil <= 14) return 'next-week';      // Next week
                 if (daysUntil <= 30) return 'this-month';     // This month
                 return 'later';                               // Future
+            };
+
+            // Format date string for display (avoids timezone issues)
+            const formatDateForDisplay = (dateString) => {
+                if (!dateString) return '';
+                const [year, month, day] = dateString.split('-');
+                return new Date(year, month - 1, day).toLocaleDateString();
             };
 
             // Adjust spoons based on focus level required
@@ -3758,7 +3765,7 @@ Format your response as a simple numbered list, one step per line.`;
                                                                     }}
                                                                     title="Click to edit due date"
                                                                 >
-                                                                    📆 {new Date(task.dueDate).toLocaleDateString()}
+                                                                    📆 {formatDateForDisplay(task.dueDate)}
                                                                 </span>
                                                             )}
                                                         </div>
