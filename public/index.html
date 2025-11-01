@@ -3370,14 +3370,17 @@ Format your response as a simple numbered list, one step per line.`;
                                             return sum + (task.estimatedTime || 0);
                                         }, 0);
 
+                                        // Convert total minutes to hours
+                                        const totalEstimatedHours = totalEstimated / 60;
+
                                         const busyHours = parseCalendarInput(calendarInput);
                                         const workdayHours = 8; // Assuming 8-hour workday
                                         const availableHours = workdayHours - busyHours;
 
-                                        if (totalEstimated === 0 && busyHours === 0) return null;
+                                        if (totalEstimatedHours === 0 && busyHours === 0) return null;
 
-                                        const isOvercommitted = totalEstimated > availableHours && availableHours > 0;
-                                        const isVeryOvercommitted = totalEstimated > workdayHours;
+                                        const isOvercommitted = totalEstimatedHours > availableHours && availableHours > 0;
+                                        const isVeryOvercommitted = totalEstimatedHours > workdayHours;
 
                                         return (
                                             <div style={{
@@ -3397,29 +3400,29 @@ Format your response as a simple numbered list, one step per line.`;
                                                         <strong>Available for tasks:</strong> {availableHours.toFixed(1)} hours
                                                     </div>
                                                 )}
-                                                {totalEstimated > 0 && (
+                                                {totalEstimatedHours > 0 && (
                                                     <div style={{fontSize: '14px', marginBottom: '5px'}}>
-                                                        <strong>Task time estimate:</strong> {totalEstimated.toFixed(1)} hours
+                                                        <strong>Task time estimate:</strong> {totalEstimatedHours.toFixed(1)} hours
                                                     </div>
                                                 )}
                                                 {isVeryOvercommitted && (
                                                     <div style={{fontSize: '13px', color: '#991b1b', marginTop: '8px'}}>
-                                                        ⚠️ <strong>Seriously overcommitted!</strong> You have {totalEstimated.toFixed(1)}h of tasks but only {availableHours > 0 ? availableHours.toFixed(1) : 0}h available. Move tasks to "This Week" or "Later".
+                                                        ⚠️ <strong>Seriously overcommitted!</strong> You have {totalEstimatedHours.toFixed(1)}h of tasks but only {availableHours > 0 ? availableHours.toFixed(1) : 0}h available. Move tasks to "This Week" or "Later".
                                                     </div>
                                                 )}
                                                 {isOvercommitted && !isVeryOvercommitted && (
                                                     <div style={{fontSize: '13px', color: '#92400e', marginTop: '8px'}}>
-                                                        ⚠️ You might be overcommitted - {totalEstimated.toFixed(1)}h of tasks with only {availableHours.toFixed(1)}h available.
+                                                        ⚠️ You might be overcommitted - {totalEstimatedHours.toFixed(1)}h of tasks with only {availableHours.toFixed(1)}h available.
                                                     </div>
                                                 )}
-                                                {!isOvercommitted && totalEstimated > 4 && availableHours > 0 && (
+                                                {!isOvercommitted && totalEstimatedHours > 4 && availableHours > 0 && (
                                                     <div style={{fontSize: '13px', color: '#3730a3', marginTop: '8px'}}>
                                                         This is a full day, but manageable. You have {availableHours.toFixed(1)}h available.
                                                     </div>
                                                 )}
-                                                {!isOvercommitted && totalEstimated <= 4 && busyHours > 0 && (
+                                                {!isOvercommitted && totalEstimatedHours <= 4 && busyHours > 0 && (
                                                     <div style={{fontSize: '13px', color: '#059669', marginTop: '8px'}}>
-                                                        ✓ Good balance - {totalEstimated.toFixed(1)}h of tasks with {availableHours.toFixed(1)}h available.
+                                                        ✓ Good balance - {totalEstimatedHours.toFixed(1)}h of tasks with {availableHours.toFixed(1)}h available.
                                                     </div>
                                                 )}
                                             </div>
