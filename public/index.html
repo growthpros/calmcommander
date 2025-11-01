@@ -1537,6 +1537,9 @@
             const [calendarInput, setCalendarInput] = useState('');
             const [showCompleteModal, setShowCompleteModal] = useState(false);
             const [taskToComplete, setTaskToComplete] = useState(null);
+            const [actualSpoons, setActualSpoons] = useState(null);
+            const [completionNotes, setCompletionNotes] = useState('');
+            const [selectedActualTime, setSelectedActualTime] = useState(null);
             const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
             const [bulkUploadText, setBulkUploadText] = useState('');
             const [bulkUploadClient, setBulkUploadClient] = useState('');
@@ -1546,6 +1549,7 @@
             const [breakdownSubtasks, setBreakdownSubtasks] = useState([]);
             const [isBreakingDown, setIsBreakingDown] = useState(false);
             const [showBillingView, setShowBillingView] = useState(false);
+            const [showInsightsDashboard, setShowInsightsDashboard] = useState(false);
             const [expandedParents, setExpandedParents] = useState({});
             const [showEstimateModal, setShowEstimateModal] = useState(false);
             const [pendingTask, setPendingTask] = useState(null);
@@ -2007,6 +2011,112 @@
                 setTaskToComplete(null);
             };
 
+            // Enhanced completion with feedback - Phase 6
+            const completeTaskWithFeedback = (taskId, actualTimeHours, actualSpoonsUsed, notes) => {
+                const task = tasks.find(t => t.id === taskId);
+                if (!task) return;
+
+                const spoonsRequired = task.spoonsRequired || 2;
+
+                // Override detection (same logic as completeTask)
+                if (!crisisMode.active &&
+                    dailyCapacity.totalSpoons > 0 &&
+                    spoonsRequired > dailyCapacity.remainingSpoons) {
+
+                    const weekOverrideCount = getWeekOverrideCount();
+                    if (weekOverrideCount >= OVERRIDE_CONFIG.maxPerWeek) {
+                        setTaskPendingOverride(task);
+                        setShowWeeklyLimitModal(true);
+                        return;
+                    } else {
+                        setTaskPendingOverride(task);
+                        setShowOverrideModal(true);
+                        return;
+                    }
+                }
+
+                // Deduct spoons from daily capacity
+                if (dailyCapacity && dailyCapacity.totalSpoons > 0 && task.spoonsRequired) {
+                    const updatedCapacity = {
+                        ...dailyCapacity,
+                        remainingSpoons: dailyCapacity.remainingSpoons - task.spoonsRequired
+                    };
+                    setDailyCapacity(updatedCapacity);
+                    localStorage.setItem(`calm-neuro-check-${updatedCapacity.date}`, JSON.stringify(updatedCapacity));
+
+                    if (updatedCapacity.remainingSpoons < 0) {
+                        const newDebt = {
+                            date: new Date().toISOString().split('T')[0],
+                            debtAmount: updatedCapacity.remainingSpoons,
+                            daysInDebt: spoonDebt.daysInDebt + 1
+                        };
+                        setSpoonDebt(newDebt);
+                        localStorage.setItem('ccSpoonDebt', JSON.stringify(newDebt));
+                    }
+                }
+
+                // Calculate variances
+                const estimatedHours = (task.estimatedTime || 120) / 60; // Default 2 hours if not set
+                const timeVarianceMinutes = (parseFloat(actualTimeHours) - estimatedHours) * 60;
+                const spoonVariance = actualSpoonsUsed - spoonsRequired;
+
+                // Determine time of day
+                const hour = new Date().getHours();
+                const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+
+                // Create enhanced completed task with Phase 6 data
+                const completedTask = {
+                    ...task,
+                    status: 'completed',
+                    completedDate: Date.now(),
+                    actualTime: actualTimeHours,
+                    actualSpoons: actualSpoonsUsed,
+                    spoonVariance: spoonVariance,
+                    timeVariance: timeVarianceMinutes,
+                    completionNotes: notes || '',
+                    brainModeAtCompletion: dailyCapacity.brainMode || 'Balanced',
+                    energyLevelAtCompletion: dailyCapacity.remainingSpoons || 0,
+                    timeOfDay: timeOfDay,
+                    completedInCrisis: crisisMode.active || false
+                };
+
+                // Track crisis mode completions
+                if (crisisMode.active) {
+                    const updatedCrisis = {
+                        ...crisisMode,
+                        tasksCompletedInCrisis: [...(crisisMode.tasksCompletedInCrisis || []), taskId]
+                    };
+                    setCrisisMode(updatedCrisis);
+                    localStorage.setItem('ccCrisisMode', JSON.stringify(updatedCrisis));
+                }
+
+                // Remove from active tasks
+                const updatedTasks = tasks.filter(t => t.id !== taskId);
+                setTasks(updatedTasks);
+                localStorage.setItem('calmCommanderTasks', JSON.stringify(updatedTasks));
+
+                // Add to completed tasks
+                const updatedCompleted = [...completedTasks, completedTask];
+                setCompletedTasks(updatedCompleted);
+                localStorage.setItem('ccCompletedTasks', JSON.stringify(updatedCompleted));
+
+                // Trigger pattern analysis if enough data (5+ tasks)
+                if (updatedCompleted.length >= 5) {
+                    try {
+                        analyzeAndUpdatePatterns(updatedCompleted);
+                    } catch (e) {
+                        console.error('Pattern analysis error:', e);
+                    }
+                }
+
+                // Close modal and reset state
+                setShowCompleteModal(false);
+                setTaskToComplete(null);
+                setActualSpoons(null);
+                setCompletionNotes('');
+                setSelectedActualTime(null);
+            };
+
             // Crisis Mode activation
             const activateCrisisMode = (reason) => {
                 const now = new Date();
@@ -2452,6 +2562,350 @@ Format your response as a simple numbered list, one step per line.`;
                 return Math.min(totalBusyHours, 16); // Cap at 16 hours to avoid nonsense
             };
 
+            // ============================================
+            // PHASE 6: PATTERN DETECTION ENGINE
+            // ============================================
+
+            // Helper: Group array by key
+            const groupBy = (array, key) => {
+                return array.reduce((result, item) => {
+                    const keyValue = typeof key === 'function' ? key(item) : item[key];
+                    (result[keyValue] = result[keyValue] || []).push(item);
+                    return result;
+                }, {});
+            };
+
+            // Helper: Calculate average
+            const average = (arr) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+
+            // Helper: Calculate standard deviation
+            const standardDeviation = (arr) => {
+                if (arr.length === 0) return 0;
+                const avg = average(arr);
+                const squareDiffs = arr.map(value => Math.pow(value - avg, 2));
+                return Math.sqrt(average(squareDiffs));
+            };
+
+            // Helper: Calculate confidence score (0-1)
+            const calculateConfidence = (sampleSize, stdDev) => {
+                const sizeScore = Math.min(sampleSize / 20, 1); // Max at 20 samples
+                const consistencyScore = stdDev < 20 ? 1 : stdDev < 40 ? 0.7 : 0.4;
+                return sizeScore * consistencyScore;
+            };
+
+            // Detect time patterns
+            const detectTimePatterns = (completedTasks) => {
+                const patterns = [];
+                const MIN_SAMPLE_SIZE = 5;
+
+                // Pattern 1: Category-based variance
+                const byCategory = groupBy(completedTasks.filter(t => t.category && t.estimatedTime && t.actualTime), 'category');
+
+                Object.keys(byCategory).forEach(category => {
+                    const tasks = byCategory[category];
+
+                    if (tasks.length >= MIN_SAMPLE_SIZE) {
+                        const variances = tasks.map(t => {
+                            const estimatedHours = t.estimatedTime / 60;
+                            const actualHours = parseFloat(t.actualTime);
+                            return (actualHours - estimatedHours) * 60; // Minutes
+                        });
+
+                        const avgVariance = average(variances);
+                        const stdDev = standardDeviation(variances);
+
+                        if (stdDev < 30 && Math.abs(avgVariance) > 15) {
+                            patterns.push({
+                                id: `time-category-${category}`,
+                                type: 'category',
+                                category: category,
+                                pattern: avgVariance > 0 ? 'underestimate' : 'overestimate',
+                                averageVariance: Math.round(avgVariance),
+                                sampleSize: tasks.length,
+                                confidence: calculateConfidence(tasks.length, stdDev),
+                                message: `You typically ${avgVariance > 0 ? 'underestimate' : 'overestimate'} ${category} tasks by ${Math.abs(avgVariance).toFixed(0)} minutes`,
+                                detectedDate: Date.now()
+                            });
+                        }
+                    }
+                });
+
+                // Pattern 2: Client-based variance
+                const byClient = groupBy(
+                    completedTasks.filter(t => t.client && t.estimatedTime && t.actualTime),
+                    'client'
+                );
+
+                Object.keys(byClient).forEach(client => {
+                    const tasks = byClient[client];
+                    if (tasks.length >= MIN_SAMPLE_SIZE) {
+                        const variances = tasks.map(t => {
+                            const estimatedHours = t.estimatedTime / 60;
+                            const actualHours = parseFloat(t.actualTime);
+                            return (actualHours - estimatedHours) * 60;
+                        });
+
+                        const avgVariance = average(variances);
+                        const stdDev = standardDeviation(variances);
+
+                        if (stdDev < 30 && Math.abs(avgVariance) > 15) {
+                            patterns.push({
+                                id: `time-client-${client}`,
+                                type: 'client',
+                                client: client,
+                                pattern: avgVariance > 0 ? 'runs-over' : 'finishes-early',
+                                averageVariance: Math.round(avgVariance),
+                                sampleSize: tasks.length,
+                                confidence: calculateConfidence(tasks.length, stdDev),
+                                message: `Tasks with ${client} typically ${avgVariance > 0 ? `take ${Math.abs(avgVariance).toFixed(0)}min longer` : `finish ${Math.abs(avgVariance).toFixed(0)}min early`}`,
+                                detectedDate: Date.now()
+                            });
+                        }
+                    }
+                });
+
+                return patterns;
+            };
+
+            // Detect spoon patterns
+            const detectSpoonPatterns = (completedTasks) => {
+                const patterns = [];
+                const MIN_SAMPLE_SIZE = 5;
+
+                // Pattern 1: Brain mode impact
+                const brainModes = ['ADHD', 'Autism', 'Balanced'];
+
+                brainModes.forEach(mode => {
+                    const tasksInMode = completedTasks.filter(t =>
+                        t.brainModeAtCompletion === mode && t.actualSpoons && t.spoonsRequired
+                    );
+
+                    if (tasksInMode.length >= MIN_SAMPLE_SIZE) {
+                        const avgVariance = average(tasksInMode.map(t => t.actualSpoons - t.spoonsRequired));
+
+                        if (Math.abs(avgVariance) > 0.5) {
+                            patterns.push({
+                                id: `spoon-brain-${mode}`,
+                                type: 'brain-mode',
+                                context: `${mode} days`,
+                                pattern: avgVariance > 0 ? 'higher-cost' : 'lower-cost',
+                                averageVariance: avgVariance.toFixed(1),
+                                sampleSize: tasksInMode.length,
+                                confidence: calculateConfidence(tasksInMode.length, 0.3),
+                                message: `Tasks cost ${avgVariance > 0 ? '+' : ''}${avgVariance.toFixed(1)} more spoons on ${mode} brain mode days`,
+                                detectedDate: Date.now()
+                            });
+                        }
+                    }
+                });
+
+                // Pattern 2: Time of day impact
+                const timeOfDay = ['morning', 'afternoon', 'evening'];
+                timeOfDay.forEach(time => {
+                    const tasks = completedTasks.filter(t =>
+                        t.timeOfDay === time && t.actualSpoons && t.spoonsRequired
+                    );
+
+                    if (tasks.length >= MIN_SAMPLE_SIZE) {
+                        const avgVariance = average(tasks.map(t => t.actualSpoons - t.spoonsRequired));
+
+                        if (avgVariance > 0.5 && time === 'afternoon') {
+                            patterns.push({
+                                id: `spoon-time-${time}`,
+                                type: 'time-of-day',
+                                timeOfDay: time,
+                                pattern: 'afternoon-depletion',
+                                averageVariance: avgVariance.toFixed(1),
+                                sampleSize: tasks.length,
+                                confidence: calculateConfidence(tasks.length, 0.4),
+                                message: `Tasks after 3pm cost +${avgVariance.toFixed(0)} more spoon${Math.abs(avgVariance) > 1 ? 's' : ''} than morning tasks`,
+                                detectedDate: Date.now()
+                            });
+                        }
+                    }
+                });
+
+                // Pattern 3: Category-specific spoon patterns
+                const byCategory = groupBy(
+                    completedTasks.filter(t => t.category && t.actualSpoons && t.spoonsRequired),
+                    'category'
+                );
+
+                Object.keys(byCategory).forEach(category => {
+                    const tasks = byCategory[category];
+                    if (tasks.length >= MIN_SAMPLE_SIZE) {
+                        const avgVariance = average(tasks.map(t => t.actualSpoons - t.spoonsRequired));
+
+                        if (Math.abs(avgVariance) > 0.5) {
+                            patterns.push({
+                                id: `spoon-category-${category}`,
+                                type: 'category',
+                                category: category,
+                                averageVariance: avgVariance.toFixed(1),
+                                sampleSize: tasks.length,
+                                confidence: calculateConfidence(tasks.length, 0.3),
+                                message: `${category} tasks typically cost ${avgVariance > 0 ? '+' : ''}${avgVariance.toFixed(1)} more spoon${Math.abs(avgVariance) > 1 ? 's' : ''} than estimated`,
+                                detectedDate: Date.now()
+                            });
+                        }
+                    }
+                });
+
+                return patterns;
+            };
+
+            // Calculate personal calibration multipliers
+            const calculatePersonalCalibration = (completedTasks) => {
+                const calibration = {
+                    categories: {},
+                    sampleSizes: {}
+                };
+
+                const byCategory = groupBy(
+                    completedTasks.filter(t => t.category && t.estimatedTime && t.actualTime),
+                    'category'
+                );
+
+                Object.keys(byCategory).forEach(category => {
+                    const tasks = byCategory[category];
+
+                    if (tasks.length >= 3) {
+                        const avgMultiplier = average(tasks.map(t => {
+                            const estimated = t.estimatedTime / 60;
+                            const actual = parseFloat(t.actualTime);
+                            return estimated > 0 ? actual / estimated : 1;
+                        }));
+
+                        calibration.categories[category] = avgMultiplier;
+                        calibration.sampleSizes[category] = tasks.length;
+                    }
+                });
+
+                return calibration;
+            };
+
+            // Calculate accuracy metrics
+            const calculateAccuracyMetrics = (completedTasks) => {
+                const now = new Date();
+                const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+
+                const thisWeek = completedTasks.filter(t => new Date(t.completedDate) >= weekAgo);
+                const withTimeData = completedTasks.filter(t => t.estimatedTime && t.actualTime);
+                const withSpoonData = completedTasks.filter(t => t.spoonsRequired && t.actualSpoons);
+
+                // Time accuracy: % within 25% of estimate
+                const timeAccuracy = withTimeData.length > 0
+                    ? withTimeData.filter(t => {
+                        const estimated = t.estimatedTime / 60;
+                        const actual = parseFloat(t.actualTime);
+                        const variance = Math.abs(actual - estimated) / estimated;
+                        return variance <= 0.25;
+                    }).length / withTimeData.length
+                    : 0;
+
+                // Spoon accuracy: % within ±1 spoon
+                const spoonAccuracy = withSpoonData.length > 0
+                    ? withSpoonData.filter(t => {
+                        const variance = Math.abs(t.actualSpoons - t.spoonsRequired);
+                        return variance <= 1;
+                    }).length / withSpoonData.length
+                    : 0;
+
+                const thisWeekWithTime = thisWeek.filter(t => t.estimatedTime && t.actualTime);
+                const thisWeekWithSpoons = thisWeek.filter(t => t.spoonsRequired && t.actualSpoons);
+
+                return {
+                    overall: {
+                        timeAccuracy: timeAccuracy,
+                        spoonAccuracy: spoonAccuracy,
+                        completionCount: completedTasks.length
+                    },
+                    thisWeek: {
+                        timeAccuracy: thisWeekWithTime.length > 0
+                            ? thisWeekWithTime.filter(t => {
+                                const estimated = t.estimatedTime / 60;
+                                const actual = parseFloat(t.actualTime);
+                                const variance = Math.abs(actual - estimated) / estimated;
+                                return variance <= 0.25;
+                            }).length / thisWeekWithTime.length
+                            : 0,
+                        spoonAccuracy: thisWeekWithSpoons.length > 0
+                            ? thisWeekWithSpoons.filter(t => {
+                                const variance = Math.abs(t.actualSpoons - t.spoonsRequired);
+                                return variance <= 1;
+                            }).length / thisWeekWithSpoons.length
+                            : 0,
+                        completionCount: thisWeek.length
+                    }
+                };
+            };
+
+            // Main pattern analysis function
+            const analyzeAndUpdatePatterns = (completedTasks) => {
+                if (completedTasks.length < 5) return;
+
+                const timePatterns = detectTimePatterns(completedTasks);
+                const spoonPatterns = detectSpoonPatterns(completedTasks);
+                const calibration = calculatePersonalCalibration(completedTasks);
+                const accuracy = calculateAccuracyMetrics(completedTasks);
+
+                const patterns = {
+                    lastAnalyzed: Date.now(),
+                    minimumSampleSize: 5,
+                    timePatterns,
+                    spoonPatterns,
+                    personalCalibration: calibration,
+                    accuracyMetrics: accuracy
+                };
+
+                localStorage.setItem('ccPatterns', JSON.stringify(patterns));
+            };
+
+            // Calculate spoon accuracy percentage from recent tasks
+            const calculateSpoonAccuracy = (completedTasks) => {
+                const tasksWithFeedback = completedTasks.filter(t =>
+                    t.actualSpoons !== undefined &&
+                    t.spoonsRequired !== undefined &&
+                    t.completedDate
+                );
+
+                if (tasksWithFeedback.length === 0) return 0;
+
+                const accurate = tasksWithFeedback.filter(t =>
+                    Math.abs(t.actualSpoons - t.spoonsRequired) <= 1
+                );
+
+                return Math.round((accurate.length / tasksWithFeedback.length) * 100);
+            };
+
+            // Get the most relevant spoon tip based on detected patterns
+            const getTopSpoonTip = (completedTasks) => {
+                const patterns = JSON.parse(localStorage.getItem('ccPatterns') || '{}');
+                const spoonPatterns = patterns.spoonPatterns || [];
+
+                // Find highest confidence spoon pattern
+                if (spoonPatterns.length > 0) {
+                    const topPattern = spoonPatterns.sort((a, b) => b.confidence - a.confidence)[0];
+
+                    // Generate actionable tip based on pattern type
+                    if (topPattern.type === 'brain_mode' && topPattern.variance > 0.5) {
+                        return `${topPattern.brainMode} mode tasks use ${topPattern.variance.toFixed(1)} more spoons than estimated. Add 1-2 spoons to estimates in this mode.`;
+                    } else if (topPattern.type === 'time_of_day' && Math.abs(topPattern.variance) > 0.5) {
+                        const adjust = topPattern.variance > 0 ? 'add 1 spoon' : 'reduce by 1 spoon';
+                        return `${topPattern.timeOfDay.charAt(0).toUpperCase() + topPattern.timeOfDay.slice(1)} tasks typically ${topPattern.pattern} energy - ${adjust} for ${topPattern.timeOfDay} tasks.`;
+                    } else if (topPattern.type === 'category' && Math.abs(topPattern.variance) > 0.5) {
+                        const adjust = topPattern.variance > 0 ? `add ${Math.ceil(topPattern.variance)} spoon(s)` : `reduce by ${Math.ceil(Math.abs(topPattern.variance))} spoon(s)`;
+                        return `${topPattern.category} tasks ${topPattern.pattern === 'underestimate' ? 'drain more' : 'drain less'} energy - ${adjust} to your estimates.`;
+                    }
+                }
+
+                return null;
+            };
+
+            // ============================================
+            // END PHASE 6: PATTERN DETECTION ENGINE
+            // ============================================
+
             const parseTasks = (responseText) => {
                 // Simple task parsing for Step 1
                 // Just extract tasks that AI mentions with emoji markers
@@ -2840,6 +3294,60 @@ Format your response as a simple numbered list, one step per line.`;
                                                 ` • ${dailyCapacity.burnoutFlags.length} burnout flag${dailyCapacity.burnoutFlags.length > 1 ? 's' : ''}`
                                             }
                                         </p>
+
+                                        {/* Phase 6: Spoon Accuracy Insights */}
+                                        {(() => {
+                                            const recentCompleted = completedTasks.slice(-20);
+                                            if (recentCompleted.length >= 5) {
+                                                const accuracy = calculateSpoonAccuracy(recentCompleted);
+                                                const topTip = getTopSpoonTip(recentCompleted);
+
+                                                return (
+                                                    <div style={{
+                                                        marginTop: '12px',
+                                                        padding: '12px',
+                                                        background: 'linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)',
+                                                        borderRadius: '8px',
+                                                        border: '1px solid #a78bfa'
+                                                    }}>
+                                                        <div style={{
+                                                            fontSize: '12px',
+                                                            fontWeight: '600',
+                                                            color: '#581c87',
+                                                            marginBottom: '6px',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '6px'
+                                                        }}>
+                                                            <span>📊</span>
+                                                            <span>Estimation Insights</span>
+                                                        </div>
+                                                        <div style={{
+                                                            fontSize: '11px',
+                                                            color: '#6b21a8',
+                                                            marginBottom: topTip ? '8px' : '0'
+                                                        }}>
+                                                            Your spoon accuracy: <strong>{accuracy}%</strong> (last {recentCompleted.length} tasks)
+                                                        </div>
+                                                        {topTip && (
+                                                            <div style={{
+                                                                fontSize: '11px',
+                                                                color: '#7c3aed',
+                                                                background: 'rgba(255, 255, 255, 0.5)',
+                                                                padding: '8px',
+                                                                borderRadius: '6px',
+                                                                display: 'flex',
+                                                                gap: '6px'
+                                                            }}>
+                                                                <span style={{ flexShrink: 0 }}>💡</span>
+                                                                <span>{topTip}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
                                     </div>
                                     <button
                                         onClick={() => setShowNeuroCheck(true)}
@@ -3000,6 +3508,23 @@ Format your response as a simple numbered list, one step per line.`;
                                 }}
                             >
                                 💰 View Billing
+                            </button>
+                            <button
+                                onClick={() => setShowInsightsDashboard(true)}
+                                style={{
+                                    flex: 1,
+                                    padding: '10px 16px',
+                                    background: '#8b5cf6',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontSize: '14px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer'
+                                }}
+                                title="View your completion patterns and insights"
+                            >
+                                📊 View Insights
                             </button>
                         </div>
 
@@ -3854,7 +4379,7 @@ Format your response as a simple numbered list, one step per line.`;
                             );
                         })()}
 
-                        {/* Complete Task Modal */}
+                        {/* Enhanced Complete Task Modal - Phase 6 */}
                         {showCompleteModal && taskToComplete && (
                             <div style={{
                                 position: 'fixed',
@@ -3866,113 +4391,203 @@ Format your response as a simple numbered list, one step per line.`;
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                zIndex: 1000
-                            }} onClick={() => setShowCompleteModal(false)}>
+                                zIndex: 1000,
+                                overflow: 'auto'
+                            }} onClick={() => {
+                                setShowCompleteModal(false);
+                                setActualSpoons(null);
+                                setCompletionNotes('');
+                                setSelectedActualTime(null);
+                            }}>
                                 <div style={{
                                     background: 'white',
                                     borderRadius: '16px',
                                     padding: '30px',
-                                    maxWidth: '500px',
-                                    width: '90%'
+                                    maxWidth: '600px',
+                                    width: '90%',
+                                    maxHeight: '90vh',
+                                    overflow: 'auto',
+                                    margin: '20px'
                                 }} onClick={(e) => e.stopPropagation()}>
-                                    <h3 style={{marginBottom: '15px'}}>Task Complete!</h3>
-                                    <p style={{marginBottom: '15px'}}><strong>{taskToComplete.title}</strong></p>
-                                    {taskToComplete.estimatedTime && (
-                                        <p style={{marginBottom: '15px', fontSize: '14px', color: '#6b7280'}}>
-                                            You estimated: <strong>{taskToComplete.estimatedTime < 1 ? `${taskToComplete.estimatedTime * 60} minutes` : `${taskToComplete.estimatedTime} hour${taskToComplete.estimatedTime > 1 ? 's' : ''}`}</strong>
-                                        </p>
-                                    )}
-                                    <div>
-                                        <label style={{display: 'block', marginBottom: '10px', fontWeight: 600}}>How long did this actually take?</label>
-                                        <div style={{display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
-                                            <button
-                                                onClick={() => completeTask(taskToComplete.id, '0.25')}
-                                                style={{
-                                                    padding: '10px 16px',
-                                                    background: '#667eea',
-                                                    color: 'white',
-                                                    border: 'none',
-                                                    borderRadius: '8px',
-                                                    cursor: 'pointer',
-                                                    fontWeight: 600
-                                                }}
-                                            >
-                                                15 min
-                                            </button>
-                                            <button
-                                                onClick={() => completeTask(taskToComplete.id, '0.5')}
-                                                style={{
-                                                    padding: '10px 16px',
-                                                    background: '#667eea',
-                                                    color: 'white',
-                                                    border: 'none',
-                                                    borderRadius: '8px',
-                                                    cursor: 'pointer',
-                                                    fontWeight: 600
-                                                }}
-                                            >
-                                                30 min
-                                            </button>
-                                            <button
-                                                onClick={() => completeTask(taskToComplete.id, '1')}
-                                                style={{
-                                                    padding: '10px 16px',
-                                                    background: '#667eea',
-                                                    color: 'white',
-                                                    border: 'none',
-                                                    borderRadius: '8px',
-                                                    cursor: 'pointer',
-                                                    fontWeight: 600
-                                                }}
-                                            >
-                                                1 hour
-                                            </button>
-                                            <button
-                                                onClick={() => completeTask(taskToComplete.id, '2')}
-                                                style={{
-                                                    padding: '10px 16px',
-                                                    background: '#667eea',
-                                                    color: 'white',
-                                                    border: 'none',
-                                                    borderRadius: '8px',
-                                                    cursor: 'pointer',
-                                                    fontWeight: 600
-                                                }}
-                                            >
-                                                2 hours
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    const time = prompt('Enter hours (e.g., 1.5):');
-                                                    if (time) completeTask(taskToComplete.id, time);
-                                                }}
-                                                style={{
-                                                    padding: '10px 16px',
-                                                    background: '#6b7280',
-                                                    color: 'white',
-                                                    border: 'none',
-                                                    borderRadius: '8px',
-                                                    cursor: 'pointer',
-                                                    fontWeight: 600
-                                                }}
-                                            >
-                                                Custom
-                                            </button>
+                                    <h3 style={{marginBottom: '10px', fontSize: '20px'}}>🎉 Task Complete!</h3>
+                                    <p style={{marginBottom: '5px', fontSize: '16px'}}><strong>{taskToComplete.title}</strong></p>
+                                    <div style={{fontSize: '13px', color: '#6b7280', marginBottom: '20px'}}>
+                                        {taskToComplete.category && <span>Category: {taskToComplete.category}</span>}
+                                        {taskToComplete.client && <span> | Client: {taskToComplete.client}</span>}
+                                    </div>
+
+                                    {/* TIME TRACKING */}
+                                    <div style={{
+                                        background: '#f9fafb',
+                                        padding: '20px',
+                                        borderRadius: '12px',
+                                        marginBottom: '20px',
+                                        border: '2px solid #e5e7eb'
+                                    }}>
+                                        <h4 style={{marginBottom: '12px', fontSize: '15px', display: 'flex', alignItems: 'center'}}>
+                                            ⏱️ TIME TRACKING
+                                        </h4>
+                                        {taskToComplete.estimatedTime && (
+                                            <p style={{marginBottom: '12px', fontSize: '14px', color: '#6b7280'}}>
+                                                You estimated: <strong>{taskToComplete.estimatedTime < 60 ? `${taskToComplete.estimatedTime} minutes` : `${(taskToComplete.estimatedTime / 60).toFixed(1)} hour${taskToComplete.estimatedTime > 60 ? 's' : ''}`}</strong>
+                                            </p>
+                                        )}
+                                        <label style={{display: 'block', marginBottom: '10px', fontWeight: 600, fontSize: '14px'}}>How long did this actually take?</label>
+                                        <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
+                                            {[
+                                                { value: '0.25', label: '15 min' },
+                                                { value: '0.5', label: '30 min' },
+                                                { value: '1', label: '1 hour' },
+                                                { value: '2', label: '2 hours' },
+                                                { value: '3', label: '3 hours' },
+                                                { value: 'custom', label: 'Custom' }
+                                            ].map(option => (
+                                                <button
+                                                    key={option.value}
+                                                    onClick={() => {
+                                                        if (option.value === 'custom') {
+                                                            const time = prompt('Enter hours (e.g., 1.5):');
+                                                            if (time) setSelectedActualTime(time);
+                                                        } else {
+                                                            setSelectedActualTime(option.value);
+                                                        }
+                                                    }}
+                                                    style={{
+                                                        padding: '8px 14px',
+                                                        background: selectedActualTime === option.value ? '#667eea' : 'white',
+                                                        color: selectedActualTime === option.value ? 'white' : '#333',
+                                                        border: `2px solid ${selectedActualTime === option.value ? '#667eea' : '#e5e7eb'}`,
+                                                        borderRadius: '8px',
+                                                        cursor: 'pointer',
+                                                        fontWeight: 600,
+                                                        fontSize: '13px'
+                                                    }}
+                                                >
+                                                    {option.label}
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
-                                    <div style={{marginTop: '20px', display: 'flex', justifyContent: 'flex-end'}}>
-                                        <button
-                                            onClick={() => setShowCompleteModal(false)}
+
+                                    {/* ENERGY TRACKING */}
+                                    <div style={{
+                                        background: '#fef3c7',
+                                        padding: '20px',
+                                        borderRadius: '12px',
+                                        marginBottom: '20px',
+                                        border: '2px solid #f59e0b'
+                                    }}>
+                                        <h4 style={{marginBottom: '12px', fontSize: '15px', display: 'flex', alignItems: 'center'}}>
+                                            🥄 ENERGY TRACKING
+                                        </h4>
+                                        <p style={{marginBottom: '12px', fontSize: '14px', color: '#92400e'}}>
+                                            You estimated: <strong>{taskToComplete.spoonsRequired || 2} spoon{(taskToComplete.spoonsRequired || 2) > 1 ? 's' : ''}</strong>
+                                        </p>
+                                        <label style={{display: 'block', marginBottom: '12px', fontWeight: 600, fontSize: '14px'}}>How did it feel energy-wise?</label>
+                                        <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+                                            {[
+                                                { value: (taskToComplete.spoonsRequired || 2) - 1, label: 'Easier than expected', desc: 'Less draining, had momentum' },
+                                                { value: taskToComplete.spoonsRequired || 2, label: 'About right', desc: 'Matched my estimate' },
+                                                { value: (taskToComplete.spoonsRequired || 2) + 1, label: 'Harder than expected', desc: 'More draining than I thought' }
+                                            ].filter(option => option.value >= 1 && option.value <= 4).map(option => (
+                                                <label key={option.value} style={{
+                                                    display: 'flex',
+                                                    alignItems: 'flex-start',
+                                                    padding: '12px',
+                                                    border: `2px solid ${actualSpoons === option.value ? '#f59e0b' : '#e5e7eb'}`,
+                                                    borderRadius: '8px',
+                                                    background: actualSpoons === option.value ? '#fffbeb' : 'white',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s'
+                                                }}>
+                                                    <input
+                                                        type="radio"
+                                                        name="actualSpoons"
+                                                        value={option.value}
+                                                        checked={actualSpoons === option.value}
+                                                        onChange={() => setActualSpoons(option.value)}
+                                                        style={{marginRight: '12px', marginTop: '2px'}}
+                                                    />
+                                                    <div style={{flex: 1}}>
+                                                        <div style={{fontWeight: 600, fontSize: '14px', marginBottom: '2px'}}>
+                                                            {option.label} ({option.value} spoon{option.value > 1 ? 's' : ''})
+                                                        </div>
+                                                        <div style={{fontSize: '12px', color: '#6b7280'}}>{option.desc}</div>
+                                                    </div>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* OPTIONAL NOTES */}
+                                    <div style={{marginBottom: '20px'}}>
+                                        <label style={{display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px'}}>
+                                            📝 What made it different? (optional)
+                                        </label>
+                                        <textarea
+                                            value={completionNotes}
+                                            onChange={(e) => setCompletionNotes(e.target.value)}
+                                            placeholder="e.g., Client kept changing requirements, had good momentum, interrupted multiple times..."
                                             style={{
-                                                padding: '8px 16px',
-                                                background: '#6b7280',
-                                                color: 'white',
+                                                width: '100%',
+                                                minHeight: '60px',
+                                                padding: '10px',
+                                                border: '2px solid #e5e7eb',
+                                                borderRadius: '8px',
+                                                fontSize: '14px',
+                                                fontFamily: 'inherit',
+                                                resize: 'vertical'
+                                            }}
+                                        />
+                                        <p style={{fontSize: '12px', color: '#6b7280', marginTop: '4px'}}>
+                                            This helps improve future estimates ⭐
+                                        </p>
+                                    </div>
+
+                                    {/* BUTTONS */}
+                                    <div style={{display: 'flex', justifyContent: 'space-between', gap: '10px'}}>
+                                        <button
+                                            onClick={() => {
+                                                setShowCompleteModal(false);
+                                                setActualSpoons(null);
+                                                setCompletionNotes('');
+                                                setSelectedActualTime(null);
+                                            }}
+                                            style={{
+                                                padding: '10px 20px',
+                                                background: '#e5e7eb',
+                                                color: '#333',
                                                 border: 'none',
-                                                borderRadius: '6px',
-                                                cursor: 'pointer'
+                                                borderRadius: '8px',
+                                                cursor: 'pointer',
+                                                fontWeight: 600,
+                                                fontSize: '14px'
                                             }}
                                         >
                                             Cancel
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                if (!selectedActualTime) {
+                                                    alert('Please select how long the task took');
+                                                    return;
+                                                }
+                                                const spoons = actualSpoons || taskToComplete.spoonsRequired || 2;
+                                                completeTaskWithFeedback(taskToComplete.id, selectedActualTime, spoons, completionNotes);
+                                            }}
+                                            disabled={!selectedActualTime}
+                                            style={{
+                                                padding: '10px 30px',
+                                                background: selectedActualTime ? '#10b981' : '#d1d5db',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '8px',
+                                                cursor: selectedActualTime ? 'pointer' : 'not-allowed',
+                                                fontWeight: 600,
+                                                fontSize: '14px'
+                                            }}
+                                        >
+                                            Complete Task ✓
                                         </button>
                                     </div>
                                 </div>
@@ -4511,6 +5126,246 @@ Format your response as a simple numbered list, one step per line.`;
                                 </div>
                             </div>
                         )}
+
+                        {/* Phase 6: Insights Dashboard Modal */}
+                        {showInsightsDashboard && (() => {
+                            const patterns = JSON.parse(localStorage.getItem('ccPatterns') || '{}');
+                            const hasData = completedTasks.length >= 5;
+
+                            if (!hasData) {
+                                return (
+                                    <div style={{
+                                        position: 'fixed',
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        bottom: 0,
+                                        background: 'rgba(0, 0, 0, 0.5)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        zIndex: 1000
+                                    }} onClick={() => setShowInsightsDashboard(false)}>
+                                        <div style={{
+                                            background: 'white',
+                                            borderRadius: '16px',
+                                            padding: '40px',
+                                            maxWidth: '500px',
+                                            width: '90%',
+                                            textAlign: 'center'
+                                        }} onClick={(e) => e.stopPropagation()}>
+                                            <h3 style={{marginBottom: '20px', fontSize: '24px'}}>📊 Not Enough Data Yet</h3>
+                                            <p style={{color: '#6b7280', marginBottom: '20px', lineHeight: 1.6}}>
+                                                You need to complete at least 5 tasks with feedback (spoon and time tracking) before we can detect patterns and show insights.
+                                            </p>
+                                            <p style={{fontSize: '18px', marginBottom: '30px'}}>
+                                                Completed: <strong>{completedTasks.length} / 5</strong>
+                                            </p>
+                                            <button
+                                                onClick={() => setShowInsightsDashboard(false)}
+                                                style={{
+                                                    padding: '12px 30px',
+                                                    background: '#8b5cf6',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 600,
+                                                    fontSize: '16px'
+                                                }}
+                                            >
+                                                Got it!
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            }
+
+                            const accuracy = patterns.accuracyMetrics || { overall: {}, thisWeek: {} };
+                            const timePatterns = patterns.timePatterns || [];
+                            const spoonPatterns = patterns.spoonPatterns || [];
+
+                            return (
+                                <div style={{
+                                    position: 'fixed',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    background: 'rgba(0, 0, 0, 0.5)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    zIndex: 1000,
+                                    overflow: 'auto',
+                                    padding: '20px'
+                                }} onClick={() => setShowInsightsDashboard(false)}>
+                                    <div style={{
+                                        background: 'white',
+                                        borderRadius: '16px',
+                                        padding: '30px',
+                                        maxWidth: '800px',
+                                        width: '100%',
+                                        maxHeight: '90vh',
+                                        overflow: 'auto'
+                                    }} onClick={(e) => e.stopPropagation()}>
+                                        <h2 style={{marginBottom: '25px', fontSize: '26px', textAlign: 'center'}}>📊 Your Completion Patterns & Insights</h2>
+
+                                        {/* THIS WEEK SUMMARY */}
+                                        <div style={{
+                                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                            color: 'white',
+                                            padding: '20px',
+                                            borderRadius: '12px',
+                                            marginBottom: '25px'
+                                        }}>
+                                            <h3 style={{marginBottom: '15px', fontSize: '18px', color: 'white'}}>THIS WEEK</h3>
+                                            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px'}}>
+                                                <div>
+                                                    <div style={{fontSize: '32px', fontWeight: 'bold', marginBottom: '5px'}}>
+                                                        {accuracy.thisWeek.completionCount || completedTasks.length}
+                                                    </div>
+                                                    <div style={{fontSize: '14px', opacity: 0.9}}>Tasks completed</div>
+                                                </div>
+                                                <div>
+                                                    <div style={{fontSize: '32px', fontWeight: 'bold', marginBottom: '5px'}}>
+                                                        {((accuracy.thisWeek.timeAccuracy || accuracy.overall.timeAccuracy || 0) * 100).toFixed(0)}%
+                                                    </div>
+                                                    <div style={{fontSize: '14px', opacity: 0.9}}>Time accuracy ⏱️</div>
+                                                </div>
+                                                <div>
+                                                    <div style={{fontSize: '32px', fontWeight: 'bold', marginBottom: '5px'}}>
+                                                        {((accuracy.thisWeek.spoonAccuracy || accuracy.overall.spoonAccuracy || 0) * 100).toFixed(0)}%
+                                                    </div>
+                                                    <div style={{fontSize: '14px', opacity: 0.9}}>Spoon accuracy 🥄</div>
+                                                </div>
+                                                <div>
+                                                    <div style={{fontSize: '32px', fontWeight: 'bold', marginBottom: '5px'}}>
+                                                        {(timePatterns.length + spoonPatterns.length)}
+                                                    </div>
+                                                    <div style={{fontSize: '14px', opacity: 0.9}}>Patterns detected</div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* PATTERNS DETECTED */}
+                                        <div style={{marginBottom: '25px'}}>
+                                            <h3 style={{marginBottom: '15px', fontSize: '20px', color: '#333'}}>🔍 Patterns Detected</h3>
+
+                                            {timePatterns.length === 0 && spoonPatterns.length === 0 && (
+                                                <div style={{
+                                                    padding: '20px',
+                                                    background: '#f9fafb',
+                                                    borderRadius: '8px',
+                                                    textAlign: 'center',
+                                                    color: '#6b7280'
+                                                }}>
+                                                    No patterns detected yet. Complete more tasks with similar categories or clients to see patterns emerge.
+                                                </div>
+                                            )}
+
+                                            {/* Time Patterns */}
+                                            {timePatterns.slice(0, 3).map(pattern => (
+                                                <div key={pattern.id} style={{
+                                                    background: '#fef3c7',
+                                                    border: '2px solid #f59e0b',
+                                                    borderRadius: '8px',
+                                                    padding: '15px',
+                                                    marginBottom: '12px'
+                                                }}>
+                                                    <div style={{display: 'flex', alignItems: 'flex-start', gap: '12px'}}>
+                                                        <div style={{fontSize: '24px'}}>⏱️</div>
+                                                        <div style={{flex: 1}}>
+                                                            <div style={{fontWeight: 600, marginBottom: '5px', color: '#92400e'}}>
+                                                                {pattern.message}
+                                                            </div>
+                                                            <div style={{fontSize: '13px', color: '#78350f'}}>
+                                                                Based on {pattern.sampleSize} tasks | Confidence: {(pattern.confidence * 100).toFixed(0)}%
+                                                            </div>
+                                                            <div style={{fontSize: '12px', color: '#a16207', marginTop: '8px'}}>
+                                                                💡 Tip: Add {Math.abs(pattern.averageVariance)} minutes to {pattern.category || pattern.client} estimates
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+
+                                            {/* Spoon Patterns */}
+                                            {spoonPatterns.slice(0, 3).map(pattern => (
+                                                <div key={pattern.id} style={{
+                                                    background: '#ddd6fe',
+                                                    border: '2px solid #8b5cf6',
+                                                    borderRadius: '8px',
+                                                    padding: '15px',
+                                                    marginBottom: '12px'
+                                                }}>
+                                                    <div style={{display: 'flex', alignItems: 'flex-start', gap: '12px'}}>
+                                                        <div style={{fontSize: '24px'}}>🥄</div>
+                                                        <div style={{flex: 1}}>
+                                                            <div style={{fontWeight: 600, marginBottom: '5px', color: '#5b21b6'}}>
+                                                                {pattern.message}
+                                                            </div>
+                                                            <div style={{fontSize: '13px', color: '#6b21a8'}}>
+                                                                Based on {pattern.sampleSize} tasks | Confidence: {(pattern.confidence * 100).toFixed(0)}%
+                                                            </div>
+                                                            <div style={{fontSize: '12px', color: '#7c3aed', marginTop: '8px'}}>
+                                                                💡 Tip: Budget extra energy for these situations
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* OVERALL STATS */}
+                                        <div style={{marginBottom: '25px'}}>
+                                            <h3 style={{marginBottom: '15px', fontSize: '20px', color: '#333'}}>📈 Overall Stats</h3>
+                                            <div style={{
+                                                background: '#f9fafb',
+                                                border: '2px solid #e5e7eb',
+                                                borderRadius: '8px',
+                                                padding: '20px'
+                                            }}>
+                                                <div style={{marginBottom: '12px'}}>
+                                                    <strong>Total tasks completed:</strong> {accuracy.overall.completionCount || completedTasks.length}
+                                                </div>
+                                                <div style={{marginBottom: '12px'}}>
+                                                    <strong>Overall time accuracy:</strong> {((accuracy.overall.timeAccuracy || 0) * 100).toFixed(0)}%
+                                                    <span style={{fontSize: '12px', color: '#6b7280', marginLeft: '8px'}}>
+                                                        (tasks within 25% of estimate)
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <strong>Overall spoon accuracy:</strong> {((accuracy.overall.spoonAccuracy || 0) * 100).toFixed(0)}%
+                                                    <span style={{fontSize: '12px', color: '#6b7280', marginLeft: '8px'}}>
+                                                        (tasks within ±1 spoon)
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* CLOSE BUTTON */}
+                                        <div style={{display: 'flex', justifyContent: 'center'}}>
+                                            <button
+                                                onClick={() => setShowInsightsDashboard(false)}
+                                                style={{
+                                                    padding: '12px 40px',
+                                                    background: '#8b5cf6',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 600,
+                                                    fontSize: '16px'
+                                                }}
+                                            >
+                                                Close
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })()}
 
                         {/* Task Breakdown Modal */}
                         {showBreakdownModal && taskToBreakdown && (
