@@ -269,4 +269,21 @@ async function signOutWithNotify() {
     notifyAuthStateChange(null);
 }
 
+// ============================================
+// EXPOSE TO GLOBAL SCOPE
+// ============================================
+window.signUp = signUp;
+window.signIn = signIn;
+window.signOut = signOut;
+window.getCurrentUser = getCurrentUser;
+window.isAuthenticated = isAuthenticated;
+window.getSession = getSession;
+window.resetPassword = resetPassword;
+window.updatePassword = updatePassword;
+window.updateUserMetadata = updateUserMetadata;
+window.initializeAuth = initializeAuth;
+window.onAuthStateChange = onAuthStateChange;
+window.signInWithNotify = signInWithNotify;
+window.signOutWithNotify = signOutWithNotify;
+
 console.log('✅ Supabase auth initialized');

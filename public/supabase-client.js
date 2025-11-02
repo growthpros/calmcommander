@@ -272,8 +272,11 @@ class QueryBuilder {
 }
 
 // ============================================
-// INITIALIZE & EXPORT
+// INITIALIZE & EXPORT TO GLOBAL SCOPE
 // ============================================
-const supabaseClient = new SupabaseClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+window.SUPABASE_CONFIG = SUPABASE_CONFIG;
+window.SupabaseClient = SupabaseClient;
+window.QueryBuilder = QueryBuilder;
+window.supabaseClient = new SupabaseClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
 
 console.log('✅ Supabase REST client initialized:', SUPABASE_CONFIG.url);
