@@ -4,19 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calm Commander - AuDHD Edition</title>
-
-    <!-- Import Map for ES Modules -->
-    <script type="importmap">
-    {
-        "imports": {
-            "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2"
-        }
-    }
-    </script>
-
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Supabase Client Library - Browser Bundle -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2.39.0"></script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         * {
@@ -349,29 +343,33 @@
     <div id="root"></div>
 
     <!-- Supabase Configuration -->
-    <script type="module">
+    <script>
         // ============================================
         // SUPABASE CONFIGURATION
         // ============================================
-        import { createClient } from '@supabase/supabase-js';
 
-        const SUPABASE_URL = 'https://cbeyohwwatpgzwbrhtxp.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNiZXlvaHd3YXRwZ3p3YnJodHhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwNTA0NjQsImV4cCI6MjA3NzYyNjQ2NH0.y9uvDXOlmtWoI1gw6qkxgWEgKj9iv5jeIhu1KvKz-Kk';
+        // Wait for Supabase library to load
+        document.addEventListener('DOMContentLoaded', function() {
+            const SUPABASE_URL = 'https://cbeyohwwatpgzwbrhtxp.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNiZXlvaHd3YXRwZ3p3YnJodHhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwNTA0NjQsImV4cCI6MjA3NzYyNjQ2NH0.y9uvDXOlmtWoI1gw6qkxgWEgKj9iv5jeIhu1KvKz-Kk';
 
-        // Initialize Supabase client
-        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            // Check if supabase is available
+            if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
+                // Initialize Supabase client
+                window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Feature flag: Enable/disable Supabase backend
-        // Set to false by default - users can enable in settings
-        const USE_SUPABASE = localStorage.getItem('calmCommanderUseSupabase') === 'true';
+                // Feature flag: Enable/disable Supabase backend
+                // Set to false by default - users can enable in settings
+                window.USE_SUPABASE = localStorage.getItem('calmCommanderUseSupabase') === 'true';
+                window.SUPABASE_URL = SUPABASE_URL;
 
-        // Expose to global scope so React app can access it
-        window.supabase = supabase;
-        window.USE_SUPABASE = USE_SUPABASE;
-        window.SUPABASE_URL = SUPABASE_URL;
-
-        console.log('🔧 Supabase initialized:', SUPABASE_URL);
-        console.log('🚀 USE_SUPABASE:', USE_SUPABASE);
+                console.log('🔧 Supabase initialized:', SUPABASE_URL);
+                console.log('🚀 USE_SUPABASE:', window.USE_SUPABASE);
+                console.log('✅ Supabase client ready:', typeof window.supabaseClient);
+            } else {
+                console.error('❌ Supabase library not loaded. Check console for errors.');
+            }
+        });
     </script>
 
     <script type="text/babel">
