@@ -4,13 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calm Commander - AuDHD Edition</title>
+
+    <!-- Import Map for ES Modules -->
+    <script type="importmap">
+    {
+        "imports": {
+            "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2"
+        }
+    }
+    </script>
+
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <!-- Supabase Client Library -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js"></script>
-
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         * {
@@ -343,19 +349,26 @@
     <div id="root"></div>
 
     <!-- Supabase Configuration -->
-    <script>
+    <script type="module">
         // ============================================
         // SUPABASE CONFIGURATION
         // ============================================
+        import { createClient } from '@supabase/supabase-js';
+
         const SUPABASE_URL = 'https://cbeyohwwatpgzwbrhtxp.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNiZXlvaHd3YXRwZ3p3YnJodHhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwNTA0NjQsImV4cCI6MjA3NzYyNjQ2NH0.y9uvDXOlmtWoI1gw6qkxgWEgKj9iv5jeIhu1KvKz-Kk';
 
         // Initialize Supabase client
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // Feature flag: Enable/disable Supabase backend
         // Set to false by default - users can enable in settings
         const USE_SUPABASE = localStorage.getItem('calmCommanderUseSupabase') === 'true';
+
+        // Expose to global scope so React app can access it
+        window.supabase = supabase;
+        window.USE_SUPABASE = USE_SUPABASE;
+        window.SUPABASE_URL = SUPABASE_URL;
 
         console.log('🔧 Supabase initialized:', SUPABASE_URL);
         console.log('🚀 USE_SUPABASE:', USE_SUPABASE);
