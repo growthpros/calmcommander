@@ -8,23 +8,19 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Supabase via Skypack CDN (browser-optimized) -->
-    <script type="module">
-        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2.39.0';
+    <!-- Supabase REST API Client (No external dependencies) -->
+    <script src="supabase-client.js"></script>
+    <script src="auth.js"></script>
 
-        const SUPABASE_URL = 'https://cbeyohwwatpgzwbrhtxp.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNiZXlvaHd3YXRwZ3p3YnJodHhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwNTA0NjQsImV4cCI6MjA3NzYyNjQ2NH0.y9uvDXOlmtWoI1gw6qkxgWEgKj9iv5jeIhu1KvKz-Kk';
-
-        // Initialize Supabase client
-        window.supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        // Feature flag
+    <!-- Feature Flag Configuration -->
+    <script>
+        // Toggle Supabase backend on/off
+        // Set to false by default - users can enable in settings
         window.USE_SUPABASE = localStorage.getItem('calmCommanderUseSupabase') === 'true';
-        window.SUPABASE_URL = SUPABASE_URL;
 
-        console.log('🔧 Supabase initialized:', SUPABASE_URL);
         console.log('🚀 USE_SUPABASE:', window.USE_SUPABASE);
-        console.log('✅ Supabase client type:', typeof window.supabaseClient);
+        console.log('🔐 Auth functions available:', typeof signIn !== 'undefined');
+        console.log('💾 Database client available:', typeof supabaseClient !== 'undefined');
     </script>
 
     <script src="https://cdn.tailwindcss.com"></script>
