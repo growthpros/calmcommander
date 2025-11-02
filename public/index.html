@@ -9,6 +9,22 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Supabase REST API Client (No external dependencies) -->
+    <script src="supabase-client.js"></script>
+    <script src="auth.js"></script>
+
+    <!-- Feature Flag Configuration -->
+    <script>
+        // Toggle Supabase backend on/off
+        // Set to false by default - users can enable in settings
+        window.USE_SUPABASE = localStorage.getItem('calmCommanderUseSupabase') === 'true';
+
+        console.log('🚀 USE_SUPABASE:', window.USE_SUPABASE);
+        console.log('🔐 Auth functions available:', typeof signIn !== 'undefined');
+        console.log('💾 Database client available:', typeof supabaseClient !== 'undefined');
+    </script>
+
     <script>
         console.log('%c🎯 CALM COMMANDER v3.0-NEUROCHECK LOADED', 'background: purple; color: white; font-size: 16px; padding: 10px;');
         console.log('✅ If you see this message, the NEW version with Neuro-Check is loaded!');
@@ -1524,6 +1540,21 @@
         };
 
         function App() {
+            // ============================================
+            // AUTHENTICATION STATE (for Supabase)
+            // ============================================
+            const [user, setUser] = useState(null);
+            const [authLoading, setAuthLoading] = useState(true);
+            const [showAuthUI, setShowAuthUI] = useState(false);
+            const [authMode, setAuthMode] = useState('signin'); // 'signin' or 'signup'
+            const [authEmail, setAuthEmail] = useState('');
+            const [authPassword, setAuthPassword] = useState('');
+            const [authError, setAuthError] = useState('');
+            const [authSubmitting, setAuthSubmitting] = useState(false);
+
+            // ============================================
+            // EXISTING APP STATE
+            // ============================================
             const [apiKey, setApiKey] = useState('');
             const [isSetup, setIsSetup] = useState(false);
             const [messages, setMessages] = useState([]);
@@ -1645,6 +1676,66 @@
             });
 
             const chatEndRef = useRef(null);
+
+            // ============================================
+            // CHECK AUTHENTICATION ON MOUNT
+            // ============================================
+            useEffect(() => {
+                async function checkAuth() {
+                    // Only check auth if USE_SUPABASE is enabled
+                    if (window.USE_SUPABASE) {
+                        try {
+                            const currentUser = await initializeAuth();
+                            setUser(currentUser);
+                            setShowAuthUI(!currentUser); // Show auth UI if no user
+                        } catch (error) {
+                            console.error('Auth check failed:', error);
+                            setShowAuthUI(true);
+                        }
+                    }
+                    setAuthLoading(false);
+                }
+                checkAuth();
+            }, []);
+
+            // ============================================
+            // AUTH HANDLERS
+            // ============================================
+            const handleAuthSubmit = async (e) => {
+                e.preventDefault();
+                setAuthError('');
+                setAuthSubmitting(true);
+
+                try {
+                    if (authMode === 'signup') {
+                        await signUp(authEmail, authPassword);
+                        setAuthError('✅ Sign up successful! Please check your email to confirm your account, then log in.');
+                        setAuthMode('signin');
+                        setAuthEmail('');
+                        setAuthPassword('');
+                    } else {
+                        await signIn(authEmail, authPassword);
+                        const currentUser = await getCurrentUser();
+                        setUser(currentUser);
+                        setShowAuthUI(false);
+                        setAuthEmail('');
+                        setAuthPassword('');
+                    }
+                } catch (error) {
+                    setAuthError(error.message || 'Authentication failed');
+                } finally {
+                    setAuthSubmitting(false);
+                }
+            };
+
+            const handleLogout = async () => {
+                await signOut();
+                setUser(null);
+                setShowAuthUI(true);
+                setTasks([]);
+                setCompletedTasks([]);
+                setMessages([]);
+            };
 
             // Load from localStorage on mount
             useEffect(() => {
@@ -3089,6 +3180,174 @@ Format your response as a simple numbered list, one step per line.`;
                 }
             };
 
+            // ============================================
+            // SHOW LOADING WHILE CHECKING AUTH
+            // ============================================
+            if (authLoading && window.USE_SUPABASE) {
+                return (
+                    <div className="container">
+                        <div className="header">
+                            <h1>Calm Commander</h1>
+                        </div>
+                        <div className="content" style={{textAlign: 'center', padding: '60px 20px'}}>
+                            <div style={{fontSize: '48px', marginBottom: '20px'}}>🔄</div>
+                            <p style={{color: '#666'}}>Loading...</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            // ============================================
+            // SHOW AUTH UI IF SUPABASE ENABLED & NOT AUTHENTICATED
+            // ============================================
+            if (showAuthUI && window.USE_SUPABASE) {
+                return (
+                    <div className="container">
+                        <div className="header">
+                            <h1>Calm Commander</h1>
+                            <p style={{color: '#666', fontSize: '14px', marginTop: '8px'}}>
+                                AuDHD Edition - Task management that understands your brain
+                            </p>
+                        </div>
+                        <div className="content">
+                            <div className="setup-screen">
+                                <h2>{authMode === 'signin' ? 'Sign In' : 'Create Account'}</h2>
+                                <p style={{color: '#666', marginBottom: '30px'}}>
+                                    {authMode === 'signin'
+                                        ? 'Welcome back! Sign in to access your tasks.'
+                                        : 'Create an account to start using Calm Commander.'}
+                                </p>
+
+                                <form onSubmit={handleAuthSubmit}>
+                                    <div className="input-group">
+                                        <label htmlFor="authEmail">Email</label>
+                                        <input
+                                            id="authEmail"
+                                            type="email"
+                                            value={authEmail}
+                                            onChange={(e) => setAuthEmail(e.target.value)}
+                                            placeholder="your@email.com"
+                                            required
+                                            disabled={authSubmitting}
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px',
+                                                fontSize: '16px',
+                                                border: '2px solid #e5e7eb',
+                                                borderRadius: '8px',
+                                                marginBottom: '16px'
+                                            }}
+                                        />
+                                    </div>
+
+                                    <div className="input-group">
+                                        <label htmlFor="authPassword">Password</label>
+                                        <input
+                                            id="authPassword"
+                                            type="password"
+                                            value={authPassword}
+                                            onChange={(e) => setAuthPassword(e.target.value)}
+                                            placeholder="••••••••"
+                                            required
+                                            disabled={authSubmitting}
+                                            minLength={6}
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px',
+                                                fontSize: '16px',
+                                                border: '2px solid #e5e7eb',
+                                                borderRadius: '8px',
+                                                marginBottom: '8px'
+                                            }}
+                                        />
+                                        {authMode === 'signup' && (
+                                            <p style={{fontSize: '12px', color: '#666', marginBottom: '16px'}}>
+                                                Minimum 6 characters
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {authError && (
+                                        <div style={{
+                                            padding: '12px',
+                                            marginBottom: '16px',
+                                            borderRadius: '8px',
+                                            backgroundColor: authError.startsWith('✅') ? '#d1fae5' : '#fee2e2',
+                                            color: authError.startsWith('✅') ? '#065f46' : '#991b1b',
+                                            fontSize: '14px'
+                                        }}>
+                                            {authError}
+                                        </div>
+                                    )}
+
+                                    <button
+                                        type="submit"
+                                        className="btn-primary"
+                                        disabled={authSubmitting}
+                                        style={{
+                                            width: '100%',
+                                            padding: '14px',
+                                            fontSize: '16px',
+                                            fontWeight: '600',
+                                            opacity: authSubmitting ? 0.6 : 1,
+                                            cursor: authSubmitting ? 'not-allowed' : 'pointer'
+                                        }}
+                                    >
+                                        {authSubmitting
+                                            ? (authMode === 'signin' ? 'Signing In...' : 'Creating Account...')
+                                            : (authMode === 'signin' ? 'Sign In' : 'Create Account')}
+                                    </button>
+                                </form>
+
+                                <div style={{
+                                    marginTop: '24px',
+                                    paddingTop: '24px',
+                                    borderTop: '1px solid #e5e7eb',
+                                    textAlign: 'center'
+                                }}>
+                                    <p style={{color: '#666', fontSize: '14px'}}>
+                                        {authMode === 'signin' ? "Don't have an account?" : "Already have an account?"}
+                                        {' '}
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
+                                                setAuthError('');
+                                            }}
+                                            style={{
+                                                color: '#667eea',
+                                                background: 'none',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                fontWeight: '600',
+                                                textDecoration: 'underline'
+                                            }}
+                                        >
+                                            {authMode === 'signin' ? 'Create Account' : 'Sign In'}
+                                        </button>
+                                    </p>
+                                </div>
+
+                                <div style={{
+                                    marginTop: '24px',
+                                    padding: '16px',
+                                    backgroundColor: '#f9fafb',
+                                    borderRadius: '8px',
+                                    fontSize: '13px',
+                                    color: '#666'
+                                }}>
+                                    <strong>Note:</strong> Supabase mode is currently in beta.
+                                    To use localStorage instead, disable Supabase in settings.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // ============================================
+            // SHOW API KEY SETUP (if not set up)
+            // ============================================
             if (!isSetup) {
                 return (
                     <div className="container">
@@ -3128,7 +3387,31 @@ Format your response as a simple numbered list, one step per line.`;
             return (
                 <div className="container">
                     <div className="header">
-                        <h1>Calm Commander</h1>
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px'}}>
+                            <h1 style={{margin: 0}}>Calm Commander</h1>
+                            {window.USE_SUPABASE && user && (
+                                <button
+                                    onClick={handleLogout}
+                                    style={{
+                                        padding: '8px 16px',
+                                        background: '#ef4444',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        fontSize: '14px',
+                                        fontWeight: '600'
+                                    }}
+                                >
+                                    🚪 Logout
+                                </button>
+                            )}
+                        </div>
+                        {window.USE_SUPABASE && user && (
+                            <p style={{color: '#666', fontSize: '13px', marginBottom: '10px'}}>
+                                Logged in as: {user.email}
+                            </p>
+                        )}
                         <div className={`mode-badge ${currentMode}`}>
                             {currentMode === 'coach' ? '🧘 Coach Mode' : '🚨 Crisis Mode'}
                         </div>
