@@ -1554,6 +1554,7 @@
             const [showEstimateModal, setShowEstimateModal] = useState(false);
             const [pendingTask, setPendingTask] = useState(null);
             const [showAddTask, setShowAddTask] = useState(false);
+            const [showSpoonBoosters, setShowSpoonBoosters] = useState(false);
             const [showAdvancedAddTask, setShowAdvancedAddTask] = useState(false);
             const [showDatePicker, setShowDatePicker] = useState(false);
             const [taskToEditDate, setTaskToEditDate] = useState(null);
@@ -3379,17 +3380,39 @@ Format your response as a simple numbered list, one step per line.`;
                             </div>
                         )}
 
-                        {/* Quick Spoon Boosters - Only show if neuro-check done */}
+                        {/* Quick Spoon Boosters - Only show if neuro-check done - Collapsible */}
                         {dailyCapacity.totalSpoons > 0 && (
                             <div className="mb-4">
-                                <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
-                                    <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                <button
+                                    onClick={() => setShowSpoonBoosters(!showSpoonBoosters)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px',
+                                        background: showSpoonBoosters ? '#dbeafe' : '#f3f4f6',
+                                        border: '2px solid ' + (showSpoonBoosters ? '#60a5fa' : '#d1d5db'),
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        fontWeight: 600,
+                                        fontSize: '14px',
+                                        color: '#333',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        marginBottom: showSpoonBoosters ? '12px' : '0'
+                                    }}
+                                >
+                                    <span style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
                                         <span>⚡</span>
                                         <span>Quick Spoon Boosters</span>
-                                        <span className="text-xs text-gray-500 font-normal">
+                                        <span style={{fontSize: '12px', color: '#6b7280', fontWeight: 400}}>
                                             (use once per day each)
                                         </span>
-                                    </h3>
+                                    </span>
+                                    <span style={{fontSize: '18px'}}>{showSpoonBoosters ? '▼' : '▶'}</span>
+                                </button>
+
+                                {showSpoonBoosters && (
+                                <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
                                     <div className="grid grid-cols-2 gap-2">
                                         {QUICK_BOOSTERS.map(booster => {
                                             const alreadyUsed = dailyCapacity.quickBoostersUsed &&
@@ -3443,6 +3466,7 @@ Format your response as a simple numbered list, one step per line.`;
                                         Need a boost? Click to add spoons to your day. Each can be used once.
                                     </p>
                                 </div>
+                                )}
                             </div>
                         )}
 
