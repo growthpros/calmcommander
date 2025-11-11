@@ -9,6 +9,7 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
         console.log('%c🎯 CALM COMMANDER v3.0-NEUROCHECK LOADED', 'background: purple; color: white; font-size: 16px; padding: 10px;');
         console.log('✅ If you see this message, the NEW version with Neuro-Check is loaded!');
@@ -212,6 +213,100 @@
             color: #333;
             margin-right: 20px;
             border: 1px solid #e5e7eb;
+        }
+
+        /* Markdown styling within messages */
+        .message.assistant h1,
+        .message.assistant h2,
+        .message.assistant h3,
+        .message.assistant h4 {
+            margin-top: 16px;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .message.assistant h1 {
+            font-size: 1.5em;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 4px;
+        }
+
+        .message.assistant h2 {
+            font-size: 1.3em;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 3px;
+        }
+
+        .message.assistant h3 {
+            font-size: 1.15em;
+        }
+
+        .message.assistant p {
+            margin-bottom: 12px;
+        }
+
+        .message.assistant ul,
+        .message.assistant ol {
+            margin-left: 24px;
+            margin-bottom: 12px;
+        }
+
+        .message.assistant li {
+            margin-bottom: 4px;
+        }
+
+        .message.assistant strong {
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .message.assistant em {
+            font-style: italic;
+        }
+
+        .message.assistant code {
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9em;
+            color: #d63384;
+        }
+
+        .message.assistant pre {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin-bottom: 12px;
+        }
+
+        .message.assistant pre code {
+            background: transparent;
+            padding: 0;
+            color: #f9fafb;
+            font-size: 0.9em;
+        }
+
+        .message.assistant blockquote {
+            border-left: 4px solid #667eea;
+            padding-left: 16px;
+            margin: 12px 0;
+            color: #4b5563;
+            font-style: italic;
+        }
+
+        .message.assistant a {
+            color: #667eea;
+            text-decoration: underline;
+        }
+
+        .message.assistant hr {
+            border: none;
+            border-top: 1px solid #e5e7eb;
+            margin: 16px 0;
         }
 
         .message.system {
@@ -2958,6 +3053,22 @@ Format your response as a simple numbered list, one step per line.`;
                 }
             };
 
+            // Markdown rendering helper
+            const renderMarkdown = (content) => {
+                if (typeof marked === 'undefined') {
+                    return content; // Fallback to plain text if marked.js not loaded
+                }
+
+                // Configure marked options
+                marked.setOptions({
+                    breaks: true, // Convert line breaks to <br>
+                    gfm: true, // GitHub Flavored Markdown
+                });
+
+                const html = marked.parse(content);
+                return <div dangerouslySetInnerHTML={{ __html: html }} />;
+            };
+
             const sendMessage = async () => {
                 if (!inputMessage.trim() || isLoading) return;
 
@@ -3736,7 +3847,7 @@ Format your response as a simple numbered list, one step per line.`;
                         <div className="chat-container">
                             {messages.map((msg, index) => (
                                 <div key={index} className={`message ${msg.role}`}>
-                                    {msg.content}
+                                    {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
                                 </div>
                             ))}
                             {isLoading && (
