@@ -1951,8 +1951,7 @@
             useEffect(() => {
                 // Load settings asynchronously from Supabase (or localStorage fallback)
                 async function loadUserData() {
-                    // Load API key and calendar from Supabase
-                    const savedKey = await getApiKey();
+                    // Load calendar from Supabase (API key is now server-side)
                     const savedCalendarData = await getCalendarInput();
 
                     // Everything else still from localStorage (will migrate in later phases)
@@ -1962,16 +1961,14 @@
                     const savedEnergy = localStorage.getItem('ccDailyEnergy');
                     const savedCompleted = localStorage.getItem('ccCompletedTasks');
 
-                    return { savedKey, savedCalendarData, savedMessages, savedTasks, savedMode, savedEnergy, savedCompleted };
+                    return { savedCalendarData, savedMessages, savedTasks, savedMode, savedEnergy, savedCompleted };
                 }
 
-                loadUserData().then(({ savedKey, savedCalendarData, savedMessages, savedTasks, savedMode, savedEnergy, savedCompleted }) => {
+                loadUserData().then(({ savedCalendarData, savedMessages, savedTasks, savedMode, savedEnergy, savedCompleted }) => {
                     const savedCalendar = savedCalendarData;
 
-                if (savedKey) {
-                    setApiKey(savedKey);
-                    setIsSetup(true);
-                }
+                // App is always set up now (no API key setup required)
+                setIsSetup(true);
                 if (savedMessages) {
                     setMessages(JSON.parse(savedMessages));
                 }
@@ -2025,7 +2022,7 @@
                 }
 
                     // Add welcome message if first time
-                    if (!savedMessages && savedKey) {
+                    if (!savedMessages) {
                         const welcomeMsg = {
                             role: 'assistant',
                             content: "Hi there. I'm here to help you feel calmer and more clear. Let's take this one step at a time. What's on your mind right now?"
@@ -2035,12 +2032,8 @@
                     }
                 }).catch(error => {
                     console.error('Error loading user data:', error);
-                    // Fallback to localStorage if async loading fails
-                    const savedKey = localStorage.getItem('calmCommanderApiKey');
-                    if (savedKey) {
-                        setApiKey(savedKey);
-                        setIsSetup(true);
-                    }
+                    // App is always set up now (no API key required from user)
+                    setIsSetup(true);
                 });
             }, []);
 
@@ -2070,24 +2063,10 @@
                 }
             }, [calendarInput]);
 
+            // No longer needed - app is always set up (server-side API key)
+            // Keeping function for backward compatibility with any existing references
             const handleSetup = () => {
-                if (apiKey.trim()) {
-                    // Save API key to Supabase (and localStorage backup)
-                    saveApiKey(apiKey).then(() => {
-                        setIsSetup(true);
-
-                        const welcomeMsg = {
-                            role: 'assistant',
-                            content: "Hi there. I'm here to help you feel calmer and more clear. Let's take this one step at a time. What's on your mind right now?"
-                        };
-                        setMessages([welcomeMsg]);
-                        localStorage.setItem('calmCommanderMessages', JSON.stringify([welcomeMsg]));
-                    }).catch(err => {
-                        console.error('Error saving API key:', err);
-                        // Still set up even if Supabase save fails (localStorage backup succeeded)
-                        setIsSetup(true);
-                    });
-                }
+                setIsSetup(true);
             };
 
             // ============================================
@@ -2758,8 +2737,7 @@ Format your response as a simple numbered list, one step per line.`;
                         },
                         body: JSON.stringify({
                             message: breakdownPrompt,
-                            mode: 'coach',
-                            apiKey: apiKey
+                            mode: 'coach'
                         })
                     });
 
@@ -3391,8 +3369,7 @@ Format your response as a simple numbered list, one step per line.`;
                         },
                         body: JSON.stringify({
                             message: messageWithContext,
-                            mode: currentMode,
-                            apiKey: apiKey
+                            mode: currentMode
                         })
                     });
 
@@ -3601,7 +3578,8 @@ Format your response as a simple numbered list, one step per line.`;
             }
 
             // ============================================
-            // SHOW API KEY SETUP (if not set up)
+            // NO LONGER SHOWN - App uses server-side API key
+            // (Kept for backward compatibility, but isSetup is always true)
             // ============================================
             if (!isSetup) {
                 return (
@@ -3615,23 +3593,11 @@ Format your response as a simple numbered list, one step per line.`;
                                 <p>An AI coach designed specifically for people with ADHD and autism.</p>
 
                                 <div className="info-box">
-                                    Get your API key at console.anthropic.com. It stays private on your device.
-                                </div>
-
-                                <div className="input-group">
-                                    <label htmlFor="apiKey">Anthropic API Key</label>
-                                    <input
-                                        id="apiKey"
-                                        type="password"
-                                        value={apiKey}
-                                        onChange={(e) => setApiKey(e.target.value)}
-                                        placeholder="sk-ant-..."
-                                        onKeyPress={(e) => e.key === 'Enter' && handleSetup()}
-                                    />
+                                    This app uses a server-side API key. No setup required!
                                 </div>
 
                                 <button className="btn-primary" onClick={handleSetup}>
-                                    Start Using Calm Commander
+                                    Continue to App
                                 </button>
                             </div>
                         </div>

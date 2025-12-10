@@ -75,9 +75,11 @@
 ## Phase 1 Complete! ✅
 
 **What was migrated:**
-- API key storage
 - Calendar input storage
 - User preferences structure
+
+**What's stored server-side (NOT per-user):**
+- API key (stored as ANTHROPIC_API_KEY environment variable)
 
 **What's still in localStorage:**
 - Tasks (active & completed)
@@ -88,8 +90,9 @@
 - Chat messages
 
 **How it works:**
-- When user logs in → localStorage data auto-migrates to Supabase
-- When user saves API key or calendar → Saved to both Supabase AND localStorage (backup)
+- API key: Server-side only (set via environment variable) - no setup screen for users
+- Calendar input: Saved to both Supabase AND localStorage (backup)
+- When user logs in → localStorage calendar data auto-migrates to Supabase
 - If Supabase fails → Falls back to localStorage automatically
 - If offline → Uses localStorage, syncs to Supabase when online
 
@@ -97,46 +100,64 @@
 
 ## Testing Phase 1 (REQUIRED before Phase 2)
 
-### Test 1: New User Sign Up
-1. Open app in browser
-2. Sign up with new account
-3. Enter API key
-4. Enter calendar input (e.g., "2h meeting")
-5. **Check Supabase:** Table Editor → user_settings → Should see your API key and calendar
+### **SETUP FIRST:** Set Server-Side API Key
 
-### Test 2: Cross-Device Sync
+Create a `.env` file in the project root:
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and add your Anthropic API key:
+```
+ANTHROPIC_API_KEY=sk-ant-your-actual-key-here
+PORT=5000
+```
+
+Restart your server after setting the API key.
+
+---
+
+### Test 1: Server-Side API Key Works
+1. Open app in browser
+2. Sign up/log in with Supabase account
+3. Try to send a chat message
+4. **Expected:** AI responds (confirms server API key is working)
+5. **Check console:** No "API key not set" errors
+
+### Test 2: Calendar Input - Cross-Device Sync
 1. Log in on Device 1 (computer)
-2. Enter API key "test-key-123"
-3. Enter calendar input "1h call"
-4. Log in on Device 2 (phone/another browser)
-5. **Expected:** API key and calendar should load automatically
+2. Enter calendar input "2h meeting"
+3. Log in on Device 2 (phone/another browser)
+4. **Expected:** Calendar input "2h meeting" appears automatically
+5. **Check Supabase:** Table Editor → user_settings → Should see calendar_input
 
 ### Test 3: localStorage Migration
 1. Before logging in, manually add to localStorage:
    ```javascript
-   localStorage.setItem('calmCommanderApiKey', 'old-key-from-local');
    localStorage.setItem('ccCalendarInput', JSON.stringify({date: new Date().toDateString(), input: '3h meeting'}));
    ```
 2. Log in with Supabase account
-3. Check browser console → Should see "✅ Successfully migrated localStorage data to Supabase"
-4. **Check Supabase:** user_settings table should have the old data
+3. Check browser console → Should see "✅ Successfully migrated localStorage calendar input to Supabase"
+4. **Check Supabase:** user_settings table should have the calendar data
 
 ### Test 4: Offline Fallback
 1. Log in normally
-2. Open DevTools → Network tab → Set to "Offline"
-3. Refresh page
-4. **Expected:** App loads API key from localStorage, no errors
-5. Go back online
-6. **Expected:** Next save syncs to Supabase
+2. Enter calendar input
+3. Open DevTools → Network tab → Set to "Offline"
+4. Refresh page
+5. **Expected:** App loads calendar from localStorage, no errors
+6. Go back online
+7. **Expected:** Next save syncs to Supabase
 
 ### Test 5: Error Handling
 1. Log in normally
 2. Open DevTools → Console
 3. Check for errors
 4. **Expected:** No errors, only success messages
+5. **Expected:** See "✅ Supabase settings helpers initialized (server-side API key mode)"
 
 ### Success Criteria
-- ✅ API key persists across devices
+- ✅ Server API key works (AI responds to messages)
 - ✅ Calendar input persists across devices
 - ✅ localStorage data migrates on first login
 - ✅ Works offline (loads from localStorage)

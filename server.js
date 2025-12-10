@@ -78,11 +78,19 @@ You've got this. One small step is enough.`
 // Chat endpoint
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, mode, apiKey } = req.body;
+    const { message, mode } = req.body;
 
-    if (!message || !mode || !apiKey) {
+    if (!message || !mode) {
       return res.status(400).json({
-        error: 'Missing required fields: message, mode, and apiKey'
+        error: 'Missing required fields: message and mode'
+      });
+    }
+
+    // Use server-side API key from environment variable
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({
+        error: 'Server configuration error: ANTHROPIC_API_KEY not set'
       });
     }
 
