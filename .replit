@@ -1,5 +1,6 @@
 run = "npm start"
 entrypoint = "server.js"
+modules = ["nodejs-20"]
 
 [nix]
 channel = "stable-22_11"
@@ -9,5 +10,40 @@ run = ["npm", "start"]
 deploymentTarget = "cloudrun"
 
 [[ports]]
+localPort = 3000
+externalPort = 3000
+
+[[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 35647
+externalPort = 3001
+
+[agent]
+expertMode = true
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Calm Commander Server"
+
+[[workflows.workflow]]
+name = "Calm Commander Server"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node server.js"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
