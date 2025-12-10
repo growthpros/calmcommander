@@ -8,7 +8,18 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
+
+// Disable caching for static files (fixes browser cache issues)
+app.use(express.static('public', {
+    maxAge: 0,
+    etag: false,
+    lastModified: false,
+    setHeaders: (res) => {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+    }
+}));
 
 // System prompts for each mode
 const SYSTEM_PROMPTS = {
@@ -156,6 +167,17 @@ app.post('/api/chat', async (req, res) => {
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Calm Commander is running' });
+});
+
+// Version check endpoint - bypasses all caching
+app.get('/version', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({
+    version: '3.0-NEUROCHECK',
+    message: 'New neuro-check features loaded!',
+    features: ['Daily Neuro-Check', 'Quick Spoon Boosters', 'AI Task Estimation'],
+    timestamp: new Date().toISOString()
+  });
 });
 
 app.listen(PORT, '0.0.0.0', () => {
