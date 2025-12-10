@@ -16,8 +16,9 @@
     <!-- Feature Flag Configuration -->
     <script>
         // Toggle Supabase backend on/off
-        // Set to false by default - users can enable in settings
-        window.USE_SUPABASE = localStorage.getItem('calmCommanderUseSupabase') === 'true';
+        // Enabled by default on this branch - users can disable if needed
+        const supabaseSetting = localStorage.getItem('calmCommanderUseSupabase');
+        window.USE_SUPABASE = supabaseSetting === null ? true : supabaseSetting === 'true';
 
         console.log('🚀 USE_SUPABASE:', window.USE_SUPABASE);
         console.log('🔐 Auth functions available:', typeof signIn !== 'undefined');
