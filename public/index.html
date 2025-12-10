@@ -12,6 +12,7 @@
     <!-- Supabase REST API Client (No external dependencies) -->
     <script src="supabase-client.js"></script>
     <script src="auth.js"></script>
+    <script src="supabase-settings.js"></script>
 
     <!-- Feature Flag Configuration -->
     <script>
@@ -1920,6 +1921,15 @@
                         setShowAuthUI(false);
                         setAuthEmail('');
                         setAuthPassword('');
+
+                        // Migrate localStorage data to Supabase on first login
+                        migrateLocalStorageToSupabase().then(result => {
+                            if (result.migrated) {
+                                console.log('✅ Successfully migrated localStorage data to Supabase');
+                            }
+                        }).catch(err => {
+                            console.error('Migration error (non-fatal):', err);
+                        });
                     }
                 } catch (error) {
                     setAuthError(error.message || 'Authentication failed');
@@ -1939,13 +1949,24 @@
 
             // Load from localStorage on mount
             useEffect(() => {
-                const savedKey = localStorage.getItem('calmCommanderApiKey');
-                const savedMessages = localStorage.getItem('calmCommanderMessages');
-                const savedTasks = localStorage.getItem('calmCommanderTasks');
-                const savedMode = localStorage.getItem('calmCommanderMode');
-                const savedEnergy = localStorage.getItem('ccDailyEnergy');
-                const savedCompleted = localStorage.getItem('ccCompletedTasks');
-                const savedCalendar = localStorage.getItem('ccCalendarInput');
+                // Load settings asynchronously from Supabase (or localStorage fallback)
+                async function loadUserData() {
+                    // Load API key and calendar from Supabase
+                    const savedKey = await getApiKey();
+                    const savedCalendarData = await getCalendarInput();
+
+                    // Everything else still from localStorage (will migrate in later phases)
+                    const savedMessages = localStorage.getItem('calmCommanderMessages');
+                    const savedTasks = localStorage.getItem('calmCommanderTasks');
+                    const savedMode = localStorage.getItem('calmCommanderMode');
+                    const savedEnergy = localStorage.getItem('ccDailyEnergy');
+                    const savedCompleted = localStorage.getItem('ccCompletedTasks');
+
+                    return { savedKey, savedCalendarData, savedMessages, savedTasks, savedMode, savedEnergy, savedCompleted };
+                }
+
+                loadUserData().then(({ savedKey, savedCalendarData, savedMessages, savedTasks, savedMode, savedEnergy, savedCompleted }) => {
+                    const savedCalendar = savedCalendarData;
 
                 if (savedKey) {
                     setApiKey(savedKey);
@@ -2003,15 +2024,24 @@
                     }
                 }
 
-                // Add welcome message if first time
-                if (!savedMessages && savedKey) {
-                    const welcomeMsg = {
-                        role: 'assistant',
-                        content: "Hi there. I'm here to help you feel calmer and more clear. Let's take this one step at a time. What's on your mind right now?"
-                    };
-                    setMessages([welcomeMsg]);
-                    localStorage.setItem('calmCommanderMessages', JSON.stringify([welcomeMsg]));
-                }
+                    // Add welcome message if first time
+                    if (!savedMessages && savedKey) {
+                        const welcomeMsg = {
+                            role: 'assistant',
+                            content: "Hi there. I'm here to help you feel calmer and more clear. Let's take this one step at a time. What's on your mind right now?"
+                        };
+                        setMessages([welcomeMsg]);
+                        localStorage.setItem('calmCommanderMessages', JSON.stringify([welcomeMsg]));
+                    }
+                }).catch(error => {
+                    console.error('Error loading user data:', error);
+                    // Fallback to localStorage if async loading fails
+                    const savedKey = localStorage.getItem('calmCommanderApiKey');
+                    if (savedKey) {
+                        setApiKey(savedKey);
+                        setIsSetup(true);
+                    }
+                });
             }, []);
 
             // Auto-scroll chat only when new messages are added
@@ -2026,28 +2056,37 @@
                 }
             }, [messages]);
 
-            // Save calendar input to localStorage when it changes
+            // Save calendar input to Supabase (and localStorage backup) when it changes
             useEffect(() => {
                 if (calendarInput !== '') {
                     const calendar = {
                         date: new Date().toDateString(),
                         input: calendarInput
                     };
-                    localStorage.setItem('ccCalendarInput', JSON.stringify(calendar));
+                    // Save to Supabase (falls back to localStorage if offline)
+                    saveCalendarInput(calendar).catch(err => {
+                        console.error('Error saving calendar input:', err);
+                    });
                 }
             }, [calendarInput]);
 
             const handleSetup = () => {
                 if (apiKey.trim()) {
-                    localStorage.setItem('calmCommanderApiKey', apiKey);
-                    setIsSetup(true);
+                    // Save API key to Supabase (and localStorage backup)
+                    saveApiKey(apiKey).then(() => {
+                        setIsSetup(true);
 
-                    const welcomeMsg = {
-                        role: 'assistant',
-                        content: "Hi there. I'm here to help you feel calmer and more clear. Let's take this one step at a time. What's on your mind right now?"
-                    };
-                    setMessages([welcomeMsg]);
-                    localStorage.setItem('calmCommanderMessages', JSON.stringify([welcomeMsg]));
+                        const welcomeMsg = {
+                            role: 'assistant',
+                            content: "Hi there. I'm here to help you feel calmer and more clear. Let's take this one step at a time. What's on your mind right now?"
+                        };
+                        setMessages([welcomeMsg]);
+                        localStorage.setItem('calmCommanderMessages', JSON.stringify([welcomeMsg]));
+                    }).catch(err => {
+                        console.error('Error saving API key:', err);
+                        // Still set up even if Supabase save fails (localStorage backup succeeded)
+                        setIsSetup(true);
+                    });
                 }
             };
 
