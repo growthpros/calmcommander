@@ -10,12 +10,12 @@
 /**
  * Get user settings from Supabase
  * Falls back to localStorage if offline or error occurs
+ * NOTE: API key is now server-side only, not stored per-user
  */
 async function getUserSettings() {
     if (!window.USE_SUPABASE || !window.supabaseClient || !window.supabaseClient.authToken) {
         // Not using Supabase or not authenticated - use localStorage
         return {
-            apiKey: localStorage.getItem('calmCommanderApiKey'),
             calendarInput: JSON.parse(localStorage.getItem('ccCalendarInput') || '[]'),
             preferences: {}
         };
@@ -37,14 +37,12 @@ async function getUserSettings() {
         if (settings && settings.length > 0) {
             const userSettings = settings[0];
             return {
-                apiKey: userSettings.api_key || null,
                 calendarInput: userSettings.calendar_input || [],
                 preferences: userSettings.preferences || {}
             };
         } else {
             // No settings found - return defaults
             return {
-                apiKey: null,
                 calendarInput: [],
                 preferences: {}
             };
@@ -53,7 +51,6 @@ async function getUserSettings() {
         console.error('Error loading settings from Supabase, using localStorage:', error);
         // Fallback to localStorage
         return {
-            apiKey: localStorage.getItem('calmCommanderApiKey'),
             calendarInput: JSON.parse(localStorage.getItem('ccCalendarInput') || '[]'),
             preferences: {}
         };
@@ -63,19 +60,12 @@ async function getUserSettings() {
 /**
  * Save user settings to Supabase
  * Also saves to localStorage as backup
+ * NOTE: API key is now server-side only, not saved per-user
  */
 async function saveUserSettings(settings) {
-    const { apiKey, calendarInput, preferences } = settings;
+    const { calendarInput, preferences } = settings;
 
     // Always save to localStorage as backup
-    if (apiKey !== undefined) {
-        if (apiKey) {
-            localStorage.setItem('calmCommanderApiKey', apiKey);
-        } else {
-            localStorage.removeItem('calmCommanderApiKey');
-        }
-    }
-
     if (calendarInput !== undefined) {
         localStorage.setItem('ccCalendarInput', JSON.stringify(calendarInput));
     }
@@ -99,7 +89,6 @@ async function saveUserSettings(settings) {
             .execute();
 
         const data = {};
-        if (apiKey !== undefined) data.api_key = apiKey;
         if (calendarInput !== undefined) data.calendar_input = calendarInput;
         if (preferences !== undefined) data.preferences = preferences;
         data.updated_at = new Date().toISOString();
@@ -145,21 +134,6 @@ async function getCurrentUserId() {
 }
 
 /**
- * Save API key
- */
-async function saveApiKey(apiKey) {
-    return await saveUserSettings({ apiKey });
-}
-
-/**
- * Get API key
- */
-async function getApiKey() {
-    const settings = await getUserSettings();
-    return settings.apiKey;
-}
-
-/**
  * Save calendar input
  */
 async function saveCalendarInput(calendarInput) {
@@ -177,6 +151,7 @@ async function getCalendarInput() {
 /**
  * Migrate existing localStorage data to Supabase
  * Call this once after user logs in for the first time
+ * NOTE: Only migrates calendar input now (API key is server-side)
  */
 async function migrateLocalStorageToSupabase() {
     if (!window.USE_SUPABASE || !window.supabaseClient || !window.supabaseClient.authToken) {
@@ -184,8 +159,7 @@ async function migrateLocalStorageToSupabase() {
     }
 
     try {
-        // Get existing localStorage data
-        const apiKey = localStorage.getItem('calmCommanderApiKey');
+        // Get existing localStorage data (only calendar now)
         const calendarInput = JSON.parse(localStorage.getItem('ccCalendarInput') || '[]');
 
         // Check if Supabase already has data
@@ -203,9 +177,9 @@ async function migrateLocalStorageToSupabase() {
         }
 
         // Migrate to Supabase
-        if (apiKey || calendarInput.length > 0) {
-            await saveUserSettings({ apiKey, calendarInput, preferences: {} });
-            console.log('✅ Migrated localStorage settings to Supabase');
+        if (calendarInput.length > 0) {
+            await saveUserSettings({ calendarInput, preferences: {} });
+            console.log('✅ Migrated localStorage calendar input to Supabase');
             return { success: true, migrated: true };
         } else {
             console.log('ℹ️ No localStorage settings to migrate');
@@ -222,10 +196,8 @@ async function migrateLocalStorageToSupabase() {
 // ============================================
 window.getUserSettings = getUserSettings;
 window.saveUserSettings = saveUserSettings;
-window.saveApiKey = saveApiKey;
-window.getApiKey = getApiKey;
 window.saveCalendarInput = saveCalendarInput;
 window.getCalendarInput = getCalendarInput;
 window.migrateLocalStorageToSupabase = migrateLocalStorageToSupabase;
 
-console.log('✅ Supabase settings helpers initialized');
+console.log('✅ Supabase settings helpers initialized (server-side API key mode)');
