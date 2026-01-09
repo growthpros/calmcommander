@@ -7,11 +7,17 @@
     "start": "node server.js",
     "dev": "node server.js"
   },
-  "keywords": ["adhd", "autism", "executive-function", "ai-coach"],
+  "keywords": [
+    "adhd",
+    "autism",
+    "executive-function",
+    "ai-coach"
+  ],
   "author": "Caroline",
   "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "@supabase/supabase-js": "^2.39.0"
   }
 }
