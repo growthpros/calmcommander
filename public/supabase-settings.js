@@ -15,9 +15,7 @@
 async function getUserSettings() {
     if (
         !window.USE_SUPABASE ||
-        !window.supabaseClient ||
-        !window.supabaseClient.authToken
-    ) {
+        !window.supabaseClient 
         // Not using Supabase or not authenticated - use localStorage
         return {
             calendarInput: JSON.parse(
@@ -84,7 +82,7 @@ async function saveUserSettings(settings) {
     // If not using Supabase, just use localStorage
     if (
         !window.USE_SUPABASE ||
-        !window.supabaseClient ||
+        
         !window.supabaseClient.authToken
     ) {
         return { success: true, source: "localStorage" };
@@ -138,7 +136,9 @@ async function saveUserSettings(settings) {
  * Get current user ID from auth
  */
 async function getCurrentUserId() {
-    if (!window.supabaseClient || !window.supabaseClient.authToken) {
+    if (!window.supabaseClient) {
+        // TEMP FIX: Use test user ID until auth is implemented
+        return "27d3f088-5c3d-49dd-b0d1-69af4e6a963";
         return null;
     }
 
@@ -174,7 +174,7 @@ async function getCalendarInput() {
 async function migrateLocalStorageToSupabase() {
     if (
         !window.USE_SUPABASE ||
-        !window.supabaseClient ||
+        
         !window.supabaseClient.authToken
     ) {
         return {
@@ -298,7 +298,7 @@ async function processSyncQueue() {
 
     if (
         !window.USE_SUPABASE ||
-        !window.supabaseClient ||
+        
         !window.supabaseClient.authToken
     ) {
         console.log("⏸️ Sync paused - Supabase not available");
@@ -364,8 +364,7 @@ async function getUserTasks() {
     // If not using Supabase, just return localStorage
     if (
         !window.USE_SUPABASE ||
-        !window.supabaseClient ||
-        !window.supabaseClient.authToken
+        !window.supabaseClient
     ) {
         return fallbackTasks;
     }
@@ -413,6 +412,7 @@ async function getUserTasks() {
  * @param {Boolean} skipQueue - Skip queueing (used when processing queue)
  */
 async function saveUserTask(task, skipQueue = false) {
+      console.log('🔵 saveUserTask CALLED:', { task, skipQueue, USE_SUPABASE: window.USE_SUPABASE, hasClient: !!window.supabaseClient });
     // Always save to localStorage
     const localTasks = localStorage.getItem("calmCommanderTasks");
     let tasks = localTasks ? JSON.parse(localTasks) : [];
@@ -430,9 +430,8 @@ async function saveUserTask(task, skipQueue = false) {
     // If not using Supabase, just return localStorage success
     if (
         !window.USE_SUPABASE ||
-        !window.supabaseClient ||
-        !window.supabaseClient.authToken
-    ) {
+    !window.supabaseClient    ) {
+        console.log('⚠️ EARLY RETURN: Not using Supabase or no client', { USE_SUPABASE: window.USE_SUPABASE, hasClient: !!window.supabaseClient });
         if (!skipQueue) {
             queueOperation({ type: "create", data: task });
         }
@@ -457,7 +456,8 @@ async function saveUserTask(task, skipQueue = false) {
             spoons_required: task.spoonsRequired || 2,
             estimated_time_minutes: task.estimatedTime || 60,
             due_date: task.dueDate || null,
-            time_block: task.timeBlock || null,
+        
+            console.log('🟢 ATTEMPTING SUPABASE SAVE');time_block: task.timeBlock || null,
             status: "active",
             client: task.client || null,
             billable: task.billable || false,
@@ -484,6 +484,8 @@ async function saveUserTask(task, skipQueue = false) {
                 .execute();
         } else {
             // Insert
+              console.log('🔄 UPDATING existing task in Supabase', task.id);
+              console.log('➕ INSERTING new task into Supabase', task.id);
             await window.supabaseClient
                 .from("tasks")
                 .insert([taskData])
@@ -518,7 +520,7 @@ async function updateUserTask(taskId, updates, skipQueue = false) {
     // If not using Supabase, queue for later
     if (
         !window.USE_SUPABASE ||
-        !window.supabaseClient ||
+        
         !window.supabaseClient.authToken
     ) {
         if (!skipQueue) {
@@ -571,7 +573,7 @@ async function deleteUserTask(taskId, skipQueue = false) {
     // If not using Supabase, queue for later
     if (
         !window.USE_SUPABASE ||
-        !window.supabaseClient ||
+        
         !window.supabaseClient.authToken
     ) {
         if (!skipQueue) {
