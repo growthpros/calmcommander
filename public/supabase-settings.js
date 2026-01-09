@@ -13,10 +13,8 @@
  * NOTE: API key is now server-side only, not stored per-user
  */
 async function getUserSettings() {
-    if (
-        !window.USE_SUPABASE ||
-        !window.supabaseClient 
-        // Not using Supabase or not authenticated - use localStorage
+    // Not using Supabase or not authenticated - use localStorage
+    if (!window.USE_SUPABASE || !window.supabaseClient) {
         return {
             calendarInput: JSON.parse(
                 localStorage.getItem("ccCalendarInput") || "[]",
@@ -80,11 +78,7 @@ async function saveUserSettings(settings) {
     }
 
     // If not using Supabase, just use localStorage
-    if (
-        !window.USE_SUPABASE ||
-        
-        !window.supabaseClient.authToken
-    ) {
+    if (!window.USE_SUPABASE || !window.supabaseClient) {
         return { success: true, source: "localStorage" };
     }
 
@@ -456,8 +450,7 @@ async function saveUserTask(task, skipQueue = false) {
             spoons_required: task.spoonsRequired || 2,
             estimated_time_minutes: task.estimatedTime || 60,
             due_date: task.dueDate || null,
-        
-            console.log('🟢 ATTEMPTING SUPABASE SAVE');time_block: task.timeBlock || null,
+            time_block: task.timeBlock || null,
             status: "active",
             client: task.client || null,
             billable: task.billable || false,
@@ -476,6 +469,7 @@ async function saveUserTask(task, skipQueue = false) {
 
         if (existing && existing.length > 0) {
             // Update
+            console.log('🔄 UPDATING existing task in Supabase', task.id);
             await window.supabaseClient
                 .from("tasks")
                 .update(taskData)
@@ -484,8 +478,7 @@ async function saveUserTask(task, skipQueue = false) {
                 .execute();
         } else {
             // Insert
-              console.log('🔄 UPDATING existing task in Supabase', task.id);
-              console.log('➕ INSERTING new task into Supabase', task.id);
+            console.log('➕ INSERTING new task into Supabase', task.id);
             await window.supabaseClient
                 .from("tasks")
                 .insert([taskData])
@@ -518,11 +511,7 @@ async function updateUserTask(taskId, updates, skipQueue = false) {
     }
 
     // If not using Supabase, queue for later
-    if (
-        !window.USE_SUPABASE ||
-        
-        !window.supabaseClient.authToken
-    ) {
+    if (!window.USE_SUPABASE || !window.supabaseClient) {
         if (!skipQueue) {
             queueOperation({
                 type: "update",
