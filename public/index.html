@@ -19,8 +19,7 @@
         // Toggle Supabase backend on/off
         // Enabled by default on this branch - users can disable if needed
         const supabaseSetting = localStorage.getItem('calmCommanderUseSupabase');
-        window.USE_SUPABASE = supabaseSetting === null ? true : supabaseSetting === 'true';
-
+        window.USE_SUPABASE = true; // Always use Supabase
         console.log('🚀 USE_SUPABASE:', window.USE_SUPABASE);
         console.log('🔐 Auth functions available:', typeof signIn !== 'undefined');
         console.log('💾 Database client available:', typeof supabaseClient !== 'undefined');
@@ -1958,7 +1957,7 @@
                     const savedMessages = localStorage.getItem('calmCommanderMessages');
                     const savedTasks = localStorage.getItem('calmCommanderTasks');
                     const savedMode = localStorage.getItem('calmCommanderMode');
-                    const savedEnergy = localStorage.getItem('ccDailyEnergy');
+                    const savedTasks = await getUserTasks();  // Load from Supabase (or localStorage fallback)
                     const savedCompleted = localStorage.getItem('ccCompletedTasks');
 
                     return { savedCalendarData, savedMessages, savedTasks, savedMode, savedEnergy, savedCompleted };
@@ -2220,13 +2219,19 @@
                 const currentTasks = Array.isArray(tasks) ? tasks : [];
                 const updatedTasks = [...currentTasks, newTask];
                 setTasks(updatedTasks);
-                localStorage.setItem('calmCommanderTasks', JSON.stringify(updatedTasks));
+                // Save to Supabase (also saves to localStorage as backup)
+                saveUserTask(newTask).catch(error => {
+                  console.error('Error saving task:', error);
+                });
             };
 
             const deleteTask = (taskId) => {
                 const updatedTasks = tasks.filter(t => t.id !== taskId);
                 setTasks(updatedTasks);
-                localStorage.setItem('calmCommanderTasks', JSON.stringify(updatedTasks));
+                // Delete from Supabase (also removes from localStorage)
+                deleteUserTask(taskId).catch(error => {
+                  console.error('Error deleting task:', error);
+                });
             };
 
             const moveTask = (taskId, newView) => {
