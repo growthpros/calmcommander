@@ -1972,24 +1972,12 @@
                     setMessages(JSON.parse(savedMessages));
                 }
                 if (savedTasks) {
-                    try {
-                        const parsed = JSON.parse(savedTasks);
-                        // Ensure it's an array
-                        if (Array.isArray(parsed)) {
-                            setTasks(parsed);
-                        } else {
-                            // Backup corrupted data before removing
-                            console.error('⚠️ Tasks data is not an array, backing up to ccTasksBackup');
-                            localStorage.setItem('ccTasksBackup', savedTasks);
-                            setTasks([]);
-                            localStorage.removeItem('calmCommanderTasks');
-                        }
-                    } catch (e) {
-                        // Backup corrupted data before removing
-                        console.error('⚠️ Tasks data is corrupted, backing up to ccTasksBackup', e);
-                        localStorage.setItem('ccTasksBackup', savedTasks);
+                    // savedTasks is already an array from getUserTasks()
+                    if (Array.isArray(savedTasks)) {
+                        setTasks(savedTasks);
+                    } else {
+                        console.error('⚠️ Tasks data is not an array');
                         setTasks([]);
-                        localStorage.removeItem('calmCommanderTasks');
                     }
                 }
                 if (savedMode) {
@@ -2017,10 +2005,11 @@
                     }
                 }
                 if (savedCalendar) {
-                    const calendar = JSON.parse(savedCalendar);
-                    // Check if it's today's calendar
-                    if (calendar.date === new Date().toDateString()) {
-                        setCalendarInput(calendar.input);
+                    // savedCalendar is already parsed data from getCalendarInput()
+                    if (Array.isArray(savedCalendar)) {
+                        setCalendarInput(savedCalendar);
+                    } else if (savedCalendar.date === new Date().toDateString()) {
+                        setCalendarInput(savedCalendar.input || []);
                     }
                 }
 
