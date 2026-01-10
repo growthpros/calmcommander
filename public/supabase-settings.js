@@ -571,10 +571,9 @@ async function deleteUserTask(taskId, skipQueue = false) {
 
         await window.supabaseClient
             .from("tasks")
-            .delete()
             .eq("id", taskId)
             .eq("user_id", userId)
-            ;
+            .delete();
 
         console.log("✅ Task deleted from Supabase");
         return { success: true, source: "supabase" };
@@ -678,8 +677,9 @@ async function saveCompletedTask(task, skipQueue = false) {
             throw new Error("No user ID available");
         }
 
+        const completedTaskId = crypto.randomUUID();
         const taskData = {
-            id: task.id,
+            id: completedTaskId,
             user_id: userId,
             title: task.title,
             category: task.category || null,
@@ -692,29 +692,14 @@ async function saveCompletedTask(task, skipQueue = false) {
             focus_level: task.focusLevel || "medium",
             client: task.client || null,
             billable: task.billable || false,
-            completed_date: task.completedDate || new Date().toISOString(),
+            completed_date: task.completedDate ? new Date(task.completedDate).toISOString() : new Date().toISOString(),
             due_date: task.dueDate || null,
-            created_date: task.createdDate || new Date().toISOString(),
+            created_date: task.createdDate ? new Date(task.createdDate).toISOString() : new Date().toISOString(),
         };
 
-        const existing = await window.supabaseClient
+        await window.supabaseClient
             .from("completed_tasks")
-            .select("id")
-            .eq("id", task.id)
-            .eq("user_id", userId)
-            .execute();
-
-        if (existing && existing.length > 0) {
-            await window.supabaseClient
-                .from("completed_tasks")
-                .update(taskData)
-                .eq("id", task.id)
-                .eq("user_id", userId);
-        } else {
-            await window.supabaseClient
-                .from("completed_tasks")
-                .insert([taskData]);
-        }
+            .insert([taskData]);
 
         console.log("✅ Completed task saved to Supabase:", task.title);
         return { success: true, source: "supabase" };
@@ -752,9 +737,9 @@ async function deleteCompletedTask(taskId, skipQueue = false) {
 
         await window.supabaseClient
             .from("completed_tasks")
-            .delete()
             .eq("id", taskId)
-            .eq("user_id", userId);
+            .eq("user_id", userId)
+            .delete();
 
         console.log("✅ Completed task deleted from Supabase");
         return { success: true, source: "supabase" };
