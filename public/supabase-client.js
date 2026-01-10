@@ -262,12 +262,22 @@ class QueryBuilder {
 
     // UPDATE
     async update(data) {
-        return await this.client.update(this.table, data, this.queryOptions.filters);
+        const simpleFilters = {};
+        for (const key in this.queryOptions.filters) {
+            const filter = this.queryOptions.filters[key];
+            simpleFilters[key] = typeof filter === 'object' && filter.value !== undefined ? filter.value : filter;
+        }
+        return await this.client.update(this.table, data, simpleFilters);
     }
 
     // DELETE
     async delete() {
-        return await this.client.delete(this.table, this.queryOptions.filters);
+        const simpleFilters = {};
+        for (const key in this.queryOptions.filters) {
+            const filter = this.queryOptions.filters[key];
+            simpleFilters[key] = typeof filter === 'object' && filter.value !== undefined ? filter.value : filter;
+        }
+        return await this.client.delete(this.table, simpleFilters);
     }
 }
 
