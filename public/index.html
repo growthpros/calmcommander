@@ -696,6 +696,25 @@
                     JSON.stringify(capacityData)
                 );
 
+                // Save neuro-check to Supabase
+                const neuroCheckData = {
+                    checkDate: capacityData.completedAt,
+                    brainMode: brainMode,
+                    energyLevel: energyUnits,
+                    focusLevel: result.final_capacity,
+                    executiveFunctionScore: Math.round((energyUnits / 10) * 100),
+                    notes: selectedBurnout.length > 0 ? `Burnout flags: ${selectedBurnout.join(', ')}` : null,
+                    symptoms: selectedBurnout
+                };
+                saveNeuroCheck(neuroCheckData).catch(err => {
+                    console.error('Error saving neuro-check to Supabase:', err);
+                });
+
+                // Save daily capacity to Supabase
+                saveDailyCapacity(capacityData).catch(err => {
+                    console.error('Error saving daily capacity to Supabase:', err);
+                });
+
                 setShowResult(true);
                 onComplete(capacityData);
             };
@@ -1960,10 +1979,15 @@
                     const savedTasks = await getUserTasks();  // Load from Supabase (or localStorage fallback)
                     const savedCompleted = await getCompletedTasks();  // Load from Supabase (or localStorage fallback)
 
-                    return { savedCalendarData, savedMessages, savedTasks, savedMode, savedEnergy, savedCompleted };
+                    // Load neuro-check history and today's daily capacity from Supabase
+                    const neuroCheckHistory = await getNeuroCheckHistory();
+                    const todayDate = new Date().toISOString().split('T')[0];
+                    const todayCapacity = await getDailyCapacity(todayDate);
+
+                    return { savedCalendarData, savedMessages, savedTasks, savedMode, savedEnergy, savedCompleted, neuroCheckHistory, todayCapacity };
                 }
 
-                loadUserData().then(({ savedCalendarData, savedMessages, savedTasks, savedMode, savedEnergy, savedCompleted }) => {
+                loadUserData().then(({ savedCalendarData, savedMessages, savedTasks, savedMode, savedEnergy, savedCompleted, neuroCheckHistory, todayCapacity }) => {
                     const savedCalendar = savedCalendarData;
 
                 // App is always set up now (no API key setup required)
@@ -2009,6 +2033,17 @@
                     } else if (savedCalendar.date === new Date().toDateString()) {
                         setCalendarInput(savedCalendar.input || []);
                     }
+                }
+
+                // Load today's daily capacity from Supabase if available
+                if (todayCapacity) {
+                    setDailyCapacity(todayCapacity);
+                    console.log('✅ Loaded today\'s daily capacity from Supabase');
+                }
+
+                // Store neuro-check history for pattern analysis
+                if (neuroCheckHistory && neuroCheckHistory.length > 0) {
+                    console.log(`✅ Loaded ${neuroCheckHistory.length} neuro-checks from Supabase`);
                 }
 
                     // Add welcome message if first time
@@ -2270,6 +2305,12 @@
                     setDailyCapacity(updatedCapacity);
                     localStorage.setItem(`calm-neuro-check-${updatedCapacity.date}`, JSON.stringify(updatedCapacity));
 
+                    // Save updated capacity to Supabase
+                    updateDailyCapacity(updatedCapacity.date, {
+                        spoonsUsed: updatedCapacity.totalSpoons - updatedCapacity.remainingSpoons,
+                        remainingSpoons: updatedCapacity.remainingSpoons
+                    }).catch(err => console.error('Error updating daily capacity:', err));
+
                     // Update debt tracking
                     if (updatedCapacity.remainingSpoons < 0) {
                         const newDebt = {
@@ -2356,6 +2397,12 @@
                     };
                     setDailyCapacity(updatedCapacity);
                     localStorage.setItem(`calm-neuro-check-${updatedCapacity.date}`, JSON.stringify(updatedCapacity));
+
+                    // Save updated capacity to Supabase
+                    updateDailyCapacity(updatedCapacity.date, {
+                        spoonsUsed: updatedCapacity.totalSpoons - updatedCapacity.remainingSpoons,
+                        remainingSpoons: updatedCapacity.remainingSpoons
+                    }).catch(err => console.error('Error updating daily capacity:', err));
 
                     if (updatedCapacity.remainingSpoons < 0) {
                         const newDebt = {
@@ -3949,6 +3996,12 @@ Format your response as a simple numbered list, one step per line.`;
                                                             `calm-neuro-check-${updated.date}`,
                                                             JSON.stringify(updated)
                                                         );
+
+                                                        // Save updated capacity to Supabase
+                                                        updateDailyCapacity(updated.date, {
+                                                            spoonsAvailable: updated.totalSpoons,
+                                                            spoonsUsed: updated.totalSpoons - updated.remainingSpoons
+                                                        }).catch(err => console.error('Error updating daily capacity:', err));
 
                                                         setDailyCapacity(updated);
                                                     }}
