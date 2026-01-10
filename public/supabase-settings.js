@@ -312,6 +312,12 @@ async function processSyncQueue() {
                 case "delete":
                     await deleteUserTask(operation.data.id, true);
                     break;
+                case "create_completed":
+                    await saveCompletedTask(operation.data, true);
+                    break;
+                case "delete_completed":
+                    await deleteCompletedTask(operation.data.id, true);
+                    break;
             }
             console.log(
                 "✅ Synced:",
@@ -602,6 +608,166 @@ window.addEventListener("online", () => {
 });
 
 // ============================================
+// COMPLETED TASKS FUNCTIONS
+// ============================================
+
+/**
+ * Get all completed tasks for current user
+ */
+async function getCompletedTasks() {
+    const localCompleted = localStorage.getItem("ccCompletedTasks");
+    const fallbackCompleted = localCompleted ? JSON.parse(localCompleted) : [];
+
+    if (!window.USE_SUPABASE || !window.supabaseClient) {
+        return fallbackCompleted;
+    }
+
+    try {
+        const userId = await getCurrentUserId();
+        if (!userId) {
+            throw new Error("No user ID available");
+        }
+
+        const result = await window.supabaseClient
+            .from("completed_tasks")
+            .select("*")
+            .eq("user_id", userId)
+            .execute();
+
+        if (result && result.length > 0) {
+            localStorage.setItem("ccCompletedTasks", JSON.stringify(result));
+            console.log(`✅ Loaded ${result.length} completed tasks from Supabase`);
+            return result;
+        }
+
+        return fallbackCompleted;
+    } catch (error) {
+        console.error("Error loading completed tasks from Supabase, using localStorage:", error);
+        return fallbackCompleted;
+    }
+}
+
+/**
+ * Save a completed task
+ * @param {Object} task - Completed task data
+ * @param {Boolean} skipQueue - Skip queueing (used when processing queue)
+ */
+async function saveCompletedTask(task, skipQueue = false) {
+    const localCompleted = localStorage.getItem("ccCompletedTasks");
+    let completedTasks = localCompleted ? JSON.parse(localCompleted) : [];
+
+    const existingIndex = completedTasks.findIndex((t) => t.id === task.id);
+    if (existingIndex >= 0) {
+        completedTasks[existingIndex] = task;
+    } else {
+        completedTasks.push(task);
+    }
+
+    localStorage.setItem("ccCompletedTasks", JSON.stringify(completedTasks));
+
+    if (!window.USE_SUPABASE || !window.supabaseClient) {
+        if (!skipQueue) {
+            queueOperation({ type: "create_completed", data: task });
+        }
+        return { success: true, source: "localStorage" };
+    }
+
+    try {
+        const userId = await getCurrentUserId();
+        if (!userId) {
+            throw new Error("No user ID available");
+        }
+
+        const taskData = {
+            id: task.id,
+            user_id: userId,
+            title: task.title,
+            category: task.category || null,
+            energy_required: task.energyRequired || "medium",
+            spoons_required: task.spoonsRequired || 2,
+            estimated_time: task.estimatedTime || 60,
+            actual_spoons: task.actualSpoons || task.spoonsRequired || 2,
+            priority: task.priority || "normal",
+            urgency: task.urgency || "normal",
+            focus_level: task.focusLevel || "medium",
+            client: task.client || null,
+            billable: task.billable || false,
+            completed_date: task.completedDate || new Date().toISOString(),
+            due_date: task.dueDate || null,
+            created_date: task.createdDate || new Date().toISOString(),
+        };
+
+        const existing = await window.supabaseClient
+            .from("completed_tasks")
+            .select("id")
+            .eq("id", task.id)
+            .eq("user_id", userId)
+            .execute();
+
+        if (existing && existing.length > 0) {
+            await window.supabaseClient
+                .from("completed_tasks")
+                .update(taskData)
+                .eq("id", task.id)
+                .eq("user_id", userId);
+        } else {
+            await window.supabaseClient
+                .from("completed_tasks")
+                .insert([taskData]);
+        }
+
+        console.log("✅ Completed task saved to Supabase:", task.title);
+        return { success: true, source: "supabase" };
+    } catch (error) {
+        console.error("Error saving completed task to Supabase:", error);
+        if (!skipQueue) {
+            queueOperation({ type: "create_completed", data: task });
+        }
+        return { success: true, source: "localStorage", queued: true };
+    }
+}
+
+/**
+ * Delete a completed task
+ */
+async function deleteCompletedTask(taskId, skipQueue = false) {
+    const localCompleted = localStorage.getItem("ccCompletedTasks");
+    let completedTasks = localCompleted ? JSON.parse(localCompleted) : [];
+
+    completedTasks = completedTasks.filter((t) => t.id !== taskId);
+    localStorage.setItem("ccCompletedTasks", JSON.stringify(completedTasks));
+
+    if (!window.USE_SUPABASE || !window.supabaseClient) {
+        if (!skipQueue) {
+            queueOperation({ type: "delete_completed", data: { id: taskId } });
+        }
+        return { success: true, source: "localStorage" };
+    }
+
+    try {
+        const userId = await getCurrentUserId();
+        if (!userId) {
+            throw new Error("No user ID available");
+        }
+
+        await window.supabaseClient
+            .from("completed_tasks")
+            .delete()
+            .eq("id", taskId)
+            .eq("user_id", userId);
+
+        console.log("✅ Completed task deleted from Supabase");
+        return { success: true, source: "supabase" };
+    } catch (error) {
+        console.error("Error deleting completed task from Supabase:", error);
+        if (!skipQueue) {
+            queueOperation({ type: "delete_completed", data: { id: taskId } });
+        }
+        return { success: true, source: "localStorage", queued: true };
+    }
+}
+
+// ============================================
 // EXPOSE TO GLOBAL SCOPE
 // ============================================
 
@@ -609,6 +775,9 @@ window.getUserTasks = getUserTasks;
 window.saveUserTask = saveUserTask;
 window.updateUserTask = updateUserTask;
 window.deleteUserTask = deleteUserTask;
+window.getCompletedTasks = getCompletedTasks;
+window.saveCompletedTask = saveCompletedTask;
+window.deleteCompletedTask = deleteCompletedTask;
 window.processSyncQueue = processSyncQueue;
 
 console.log("✅ Task management functions initialized (with sync queue)");
