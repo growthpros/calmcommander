@@ -1,0 +1,124 @@
+/* ============================================
+   CALMCOMMANDER DESIGN SYSTEM
+   For Neurodivergent Professionals
+   A sensory-friendly, low-overwhelm interface
+   ============================================ */
+
+/* ============================================
+   COLOR TOKENS
+   ============================================ */
+:root {
+  /* Primary Colors */
+  --color-deep-calm: #5B4B8A;
+  --color-soft-lavender: #8B7BB5;
+  --color-whisper-purple: #E8E4F0;
+  --color-cloud-white: #FAFAFA;
+  --color-pure-white: #FFFFFF;
+
+  /* Semantic Colors */
+  --color-gentle-green: #6B9B7A;
+  --color-soft-amber: #C4A35A;
+  --color-muted-coral: #C27B7B;
+  --color-calm-blue: #6B8B9B;
+
+  /* Energy Level Colors */
+  --color-energy-low: #A8D5BA;
+  --color-energy-low-text: #2D4A36;
+  --color-energy-medium: #F5D89A;
+  --color-energy-medium-text: #5C4A1F;
+  --color-energy-high: #E8B4B4;
+  --color-energy-high-text: #5C3636;
+
+  /* Spoon Indicators */
+  --color-spoon-full: #6B9B7A;
+  --color-spoon-used: #D4D4D4;
+  --color-spoon-debt: #C27B7B;
+
+  /* Neutrals */
+  --color-text-primary: #3D3D3D;
+  --color-text-secondary: #6B6B6B;
+  --color-text-muted: #9B9B9B;
+  --color-border: #D4D4D4;
+  --color-border-light: #E8E4F0;
+
+  /* Button Hover States */
+  --color-deep-calm-hover: #4A3D73;
+
+  /* ============================================
+     TYPOGRAPHY
+     ============================================ */
+  --font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-family-accessible: 'Atkinson Hyperlegible', 'Inter', sans-serif;
+
+  /* Font Sizes */
+  --font-size-display: 2rem;        /* 32px */
+  --font-size-h1: 1.5rem;           /* 24px */
+  --font-size-h2: 1.25rem;          /* 20px */
+  --font-size-h3: 1rem;             /* 16px */
+  --font-size-body: 1rem;           /* 16px */
+  --font-size-body-small: 0.875rem; /* 14px */
+  --font-size-caption: 0.75rem;     /* 12px */
+  --font-size-button: 0.875rem;     /* 14px */
+
+  /* Font Weights */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+
+  /* Line Heights */
+  --line-height-tight: 1.2;
+  --line-height-snug: 1.3;
+  --line-height-normal: 1.4;
+  --line-height-relaxed: 1.5;
+  --line-height-loose: 1.6;
+
+  /* ============================================
+     SPACING (Base unit: 8px)
+     ============================================ */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+
+  /* ============================================
+     BORDERS & SHADOWS
+     ============================================ */
+  --border-radius-sm: 6px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  --border-radius-xl: 16px;
+
+  --shadow-sm: 0 2px 8px rgba(91, 75, 138, 0.08);
+  --shadow-md: 0 4px 12px rgba(91, 75, 138, 0.12);
+  --shadow-lg: 0 8px 24px rgba(91, 75, 138, 0.16);
+
+  /* ============================================
+     TRANSITIONS
+     ============================================ */
+  --transition-fast: 150ms ease-out;
+  --transition-normal: 200ms ease-out;
+  --transition-slow: 300ms ease-out;
+
+  /* ============================================
+     COMPONENT TOKENS
+     ============================================ */
+  --min-touch-target: 44px;
+  --max-content-width: 1200px;
+  --max-line-length: 65ch;
+}
+
+/* ============================================
+   REDUCED MOTION SUPPORT
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
