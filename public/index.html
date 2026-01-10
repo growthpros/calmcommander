@@ -1996,10 +1996,14 @@
                     setCurrentMode(savedMode);
                 }
                 if (savedEnergy) {
-                    const energy = JSON.parse(savedEnergy);
-                    // Check if it's today's energy
-                    if (energy.date === new Date().toDateString()) {
-                        setDailyEnergy(energy);
+                    try {
+                        const energy = JSON.parse(savedEnergy);
+                        // Check if it's today's energy
+                        if (energy.date === new Date().toDateString()) {
+                            setDailyEnergy(energy);
+                        }
+                    } catch (e) {
+                        console.error('Error parsing savedEnergy:', e);
                     }
                 }
                 if (savedCompleted) {

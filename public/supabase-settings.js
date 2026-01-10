@@ -443,7 +443,7 @@ async function saveUserTask(task, skipQueue = false) {
             priority: task.priority || "normal",
             focus_level: task.focusLevel || "medium",
             spoons_required: task.spoonsRequired || 2,
-            estimated_time_minutes: task.estimatedTime || 60,
+            estimated_time: task.estimatedTime || 60,
             due_date: task.dueDate || null,
             time_block: task.timeBlock || null,
             status: "active",
