@@ -441,7 +441,6 @@ async function saveUserTask(task, skipQueue = false) {
             spoons_required: task.spoonsRequired || 2,
             estimated_time: task.estimatedTime || 60,
             due_date: task.dueDate || null,
-            time_block: task.timeBlock || null,
             status: "active",
             client: task.client || null,
             billable: task.billable || false,
