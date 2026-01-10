@@ -2834,7 +2834,7 @@ Format your response as a simple numbered list, one step per line.`;
             };
 
             const parseCalendarInput = (input) => {
-                if (!input || !input.trim()) return 0;
+                if (!input || typeof input !== 'string' || !input.trim()) return 0;
 
                 let totalBusyHours = 0;
                 const text = input.toLowerCase();
