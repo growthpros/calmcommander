@@ -990,6 +990,26 @@
                 overrideLog.overrides.push(overrideEntry);
                 localStorage.setItem('ccOverrideLog', JSON.stringify(overrideLog));
 
+                // Save to Supabase
+                if (typeof window.saveOverrideLog === 'function') {
+                    await window.saveOverrideLog({
+                        override_date: overrideEntry.date,
+                        task_title: overrideEntry.taskName,
+                        spoon_cost: overrideEntry.spoonsRequired,
+                        reason: overrideEntry.reason,
+                        texted_accountability: overrideEntry.accountabilityTexted,
+                        week_start: overrideEntry.date
+                    });
+                }
+
+                // Track spoon debt in Supabase
+                if (typeof window.addSpoonDebt === 'function' && debtIncurred > 0) {
+                    await window.addSpoonDebt({
+                        amount: debtIncurred,
+                        reason: `Override: ${task.title}`
+                    });
+                }
+
                 onConfirm(task.id);
                 setAccountabilityChecked(false);
                 setReason('');

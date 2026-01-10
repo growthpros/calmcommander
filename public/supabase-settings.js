@@ -318,6 +318,33 @@ async function processSyncQueue() {
                 case "delete_completed":
                     await deleteCompletedTask(operation.data.id, true);
                     break;
+                    case "save_override_log":
+                        await saveOverrideLog(operation.data, true);
+                        break;
+                    case "add_spoon_debt":
+                        await addSpoonDebt(operation.data, true);
+                        break;
+                    case "pay_spoon_debt":
+                        await paySpoonDebt(operation.data, true);
+                        break;
+                    case "save_neuro_check":
+                        await saveNeuroCheck(operation.data, true);
+                        break;
+                    case "delete_neuro_check":
+                        await deleteNeuroCheck(operation.data.id, true);
+                        break;
+                    case "save_daily_capacity":
+                        await saveDailyCapacity(operation.data, true);
+                        break;
+                    case "update_daily_capacity":
+                        await updateDailyCapacity(operation.data.date, operation.data.updates, true);
+                        break;
+                    case "save_chat_message":
+                        await saveChatMessage(operation.data, true);
+                        break;
+                    case "save_pattern":
+                        await savePattern(operation.data, true);
+                        break;
             }
             console.log(
                 "✅ Synced:",
@@ -1065,6 +1092,225 @@ async function updateDailyCapacity(date, updates, skipQueue = false) {
     }
 }
 
+/**
+ * ============================================
+ * PHASE 5: OVERRIDE LOG & SPOON DEBT
+ * ============================================
+ */
+
+/**
+ * Save an override log entry when user pushes past spoon limit
+ * @param {Object} overrideData - Override log data
+ * @param {boolean} skipQueue - Skip queue (used when processing queue)
+ * @returns {Object} { success, source, queued }
+ */
+async function saveOverrideLog(overrideData, skipQueue = false) {
+    const localHistory = localStorage.getItem('ccOverrideLog');
+    let history = localHistory ? JSON.parse(localHistory) : [];
+
+    // Add override to localStorage
+    const overrideEntry = {
+        id: generateUUID(),
+        user_id: await getUserId(),
+        override_date: overrideData.override_date,
+        override_time: overrideData.override_time || new Date().toISOString(),
+        task_title: overrideData.task_title,
+        spoon_cost: overrideData.spoon_cost,
+        reason: overrideData.reason,
+        texted_accountability: overrideData.texted_accountability || false,
+        week_start: overrideData.week_start,
+        created_at: new Date().toISOString()
+    };
+
+    history.push(overrideEntry);
+    localStorage.setItem('ccOverrideLog', JSON.stringify(history));
+
+    // Try to save to Supabase
+    try {
+        const userId = await getUserId();
+        if (!userId) {
+            throw new Error("No user ID available");
+        }
+
+        const result = await window.supabaseClient
+            .from("override_log")
+            .insert({
+                user_id: userId,
+                override_date: overrideEntry.override_date,
+                override_time: overrideEntry.override_time,
+                task_title: overrideEntry.task_title,
+                spoon_cost: overrideEntry.spoon_cost,
+                reason: overrideEntry.reason,
+                texted_accountability: overrideEntry.texted_accountability,
+                week_start: overrideEntry.week_start
+            })
+            .execute();
+
+        console.log('✅ Override log saved to Supabase');
+        return { success: true, source: "supabase" };
+
+    } catch (error) {
+        console.error("Error saving override log to Supabase:", error);
+        if (!skipQueue) {
+            queueOperation({ type: "save_override_log", data: overrideEntry });
+            return { success: true, source: "localStorage", queued: true };
+        }
+        return { success: true, source: "localStorage" };
+    }
+}
+
+/**
+ * Get override log history
+ * @returns {Array} Override log entries
+ */
+async function getOverrideLog() {
+    const fallbackHistory = localStorage.getItem('ccOverrideLog');
+    const localHistory = fallbackHistory ? JSON.parse(fallbackHistory) : [];
+
+    try {
+        const userId = await getUserId();
+        if (!userId) {
+            throw new Error("No user ID available");
+        }
+
+        const result = await window.supabaseClient
+            .from("override_log")
+            .select("*")
+            .eq("user_id", userId)
+            .order("override_date", { ascending: false })
+            .execute();
+
+        if (result && result.length > 0) {
+            localStorage.setItem('ccOverrideLog', JSON.stringify(result));
+            console.log(`✅ Loaded ${result.length} override logs from Supabase`);
+            return result;
+        }
+
+        return localHistory;
+
+    } catch (error) {
+        console.error("Error loading override log from Supabase, using localStorage:", error);
+        return localHistory;
+    }
+}
+
+/**
+ * Add to spoon debt
+ * @param {Object} debtData - Spoon debt data
+ * @param {boolean} skipQueue - Skip queue (used when processing queue)
+ * @returns {Object} { success, source, queued }
+ */
+async function addSpoonDebt(debtData, skipQueue = false) {
+    // Update localStorage
+    const currentDebt = parseInt(localStorage.getItem('ccSpoonDebt') || '0');
+    const newDebt = currentDebt + (debtData.amount || 0);
+    localStorage.setItem('ccSpoonDebt', newDebt.toString());
+
+    // Try to save to Supabase
+    try {
+        const userId = await getUserId();
+        if (!userId) {
+            throw new Error("No user ID available");
+        }
+
+        const result = await window.supabaseClient
+            .from("spoon_debt")
+            .insert({
+                user_id: userId,
+                amount: debtData.amount,
+                reason: debtData.reason || 'Override'
+            })
+            .execute();
+
+        console.log(`✅ Spoon debt of ${debtData.amount} saved to Supabase`);
+        return { success: true, source: "supabase" };
+
+    } catch (error) {
+        console.error("Error saving spoon debt to Supabase:", error);
+        if (!skipQueue) {
+            queueOperation({ type: "add_spoon_debt", data: debtData });
+            return { success: true, source: "localStorage", queued: true };
+        }
+        return { success: true, source: "localStorage" };
+    }
+}
+
+/**
+ * Get total spoon debt
+ * @returns {number} Total spoon debt
+ */
+async function getSpoonDebt() {
+    const fallbackDebt = parseInt(localStorage.getItem('ccSpoonDebt') || '0');
+
+    try {
+        const userId = await getUserId();
+        if (!userId) {
+            throw new Error("No user ID available");
+        }
+
+        const result = await window.supabaseClient
+            .from("spoon_debt")
+            .select("amount")
+            .eq("user_id", userId)
+            .execute();
+
+        if (result && result.length > 0) {
+            const totalDebt = result.reduce((sum, entry) => sum + (entry.amount || 0), 0);
+            localStorage.setItem('ccSpoonDebt', totalDebt.toString());
+            console.log(`✅ Loaded spoon debt: ${totalDebt}`);
+            return totalDebt;
+        }
+
+        return fallbackDebt;
+
+    } catch (error) {
+        console.error("Error loading spoon debt from Supabase, using localStorage:", error);
+        return fallbackDebt;
+    }
+}
+
+/**
+ * Pay down spoon debt
+ * @param {Object} paymentData - Payment data
+ * @param {boolean} skipQueue - Skip queue (used when processing queue)
+ * @returns {Object} { success, source, queued }
+ */
+async function paySpoonDebt(paymentData, skipQueue = false) {
+    // Update localStorage
+    const currentDebt = parseInt(localStorage.getItem('ccSpoonDebt') || '0');
+    const newDebt = Math.max(0, currentDebt - (paymentData.amount || 0));
+    localStorage.setItem('ccSpoonDebt', newDebt.toString());
+
+    // Try to save to Supabase (negative amount = payment)
+    try {
+        const userId = await getUserId();
+        if (!userId) {
+            throw new Error("No user ID available");
+        }
+
+        const result = await window.supabaseClient
+            .from("spoon_debt")
+            .insert({
+                user_id: userId,
+                amount: -(paymentData.amount || 0), // Negative for payment
+                reason: paymentData.reason || 'Payment'
+            })
+            .execute();
+
+        console.log(`✅ Spoon debt payment of ${paymentData.amount} saved to Supabase`);
+        return { success: true, source: "supabase" };
+
+    } catch (error) {
+        console.error("Error saving spoon debt payment to Supabase:", error);
+        if (!skipQueue) {
+            queueOperation({ type: "pay_spoon_debt", data: paymentData });
+            return { success: true, source: "localStorage", queued: true };
+        }
+        return { success: true, source: "localStorage" };
+    }
+}
+
+
 // ============================================
 // EXPOSE TO GLOBAL SCOPE
 // ============================================
@@ -1082,6 +1328,195 @@ window.deleteNeuroCheck = deleteNeuroCheck;
 window.getDailyCapacity = getDailyCapacity;
 window.saveDailyCapacity = saveDailyCapacity;
 window.updateDailyCapacity = updateDailyCapacity;
+window.saveOverrideLog = saveOverrideLog;
+window.getOverrideLog = getOverrideLog;
+window.addSpoonDebt = addSpoonDebt;
+window.getSpoonDebt = getSpoonDebt;
+window.paySpoonDebt = paySpoonDebt;
 window.processSyncQueue = processSyncQueue;
+
+/**
+ * ============================================
+ * PHASE 7: CHAT MESSAGES & PATTERNS
+ * ============================================
+ */
+
+/**
+ * Save a chat message to Supabase
+ * @param {Object} messageData - Message data
+ * @param {boolean} skipQueue - Skip queue (used when processing queue)
+ * @returns {Object} { success, source, queued }
+ */
+async function saveChatMessage(messageData, skipQueue = false) {
+    const localMessages = localStorage.getItem('ccChatMessages');
+    let messages = localMessages ? JSON.parse(localMessages) : [];
+
+    // Add message to localStorage
+    const message = {
+        id: generateUUID(),
+        user_id: await getUserId(),
+        role: messageData.role, // 'user' or 'assistant'
+        content: messageData.content,
+        created_at: new Date().toISOString()
+    };
+
+    messages.push(message);
+    localStorage.setItem('ccChatMessages', JSON.stringify(messages));
+
+    // Try to save to Supabase
+    try {
+        const userId = await getUserId();
+        if (!userId) {
+            throw new Error("No user ID available");
+        }
+
+        const result = await window.supabaseClient
+            .from("messages")
+            .insert({
+                user_id: userId,
+                role: message.role,
+                content: message.content
+            })
+            .execute();
+
+        console.log('✅ Chat message saved to Supabase');
+        return { success: true, source: "supabase" };
+
+    } catch (error) {
+        console.error("Error saving chat message to Supabase:", error);
+        if (!skipQueue) {
+            queueOperation({ type: "save_chat_message", data: message });
+            return { success: true, source: "localStorage", queued: true };
+        }
+        return { success: true, source: "localStorage" };
+    }
+}
+
+/**
+ * Get chat message history
+ * @returns {Array} Chat messages
+ */
+async function getChatMessages() {
+    const fallbackMessages = localStorage.getItem('ccChatMessages');
+    const localMessages = fallbackMessages ? JSON.parse(fallbackMessages) : [];
+
+    try {
+        const userId = await getUserId();
+        if (!userId) {
+            throw new Error("No user ID available");
+        }
+
+        const result = await window.supabaseClient
+            .from("messages")
+            .select("*")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: true })
+            .execute();
+
+        if (result && result.length > 0) {
+            localStorage.setItem('ccChatMessages', JSON.stringify(result));
+            console.log(`✅ Loaded ${result.length} chat messages from Supabase`);
+            return result;
+        }
+
+        return localMessages;
+
+    } catch (error) {
+        console.error("Error loading chat messages from Supabase, using localStorage:", error);
+        return localMessages;
+    }
+}
+
+/**
+ * Save a detected pattern to Supabase
+ * @param {Object} patternData - Pattern data
+ * @param {boolean} skipQueue - Skip queue (used when processing queue)
+ * @returns {Object} { success, source, queued }
+ */
+async function savePattern(patternData, skipQueue = false) {
+    const localPatterns = localStorage.getItem('ccPatterns');
+    let patterns = localPatterns ? JSON.parse(localPatterns) : [];
+
+    // Add pattern to localStorage
+    const pattern = {
+        id: generateUUID(),
+        user_id: await getUserId(),
+        pattern_type: patternData.pattern_type,
+        pattern_data: patternData.pattern_data,
+        created_at: new Date().toISOString()
+    };
+
+    patterns.push(pattern);
+    localStorage.setItem('ccPatterns', JSON.stringify(patterns));
+
+    // Try to save to Supabase
+    try {
+        const userId = await getUserId();
+        if (!userId) {
+            throw new Error("No user ID available");
+        }
+
+        const result = await window.supabaseClient
+            .from("patterns")
+            .insert({
+                user_id: userId,
+                pattern_type: pattern.pattern_type,
+                pattern_data: pattern.pattern_data
+            })
+            .execute();
+
+        console.log(`✅ Pattern '${pattern.pattern_type}' saved to Supabase`);
+        return { success: true, source: "supabase" };
+
+    } catch (error) {
+        console.error("Error saving pattern to Supabase:", error);
+        if (!skipQueue) {
+            queueOperation({ type: "save_pattern", data: pattern });
+            return { success: true, source: "localStorage", queued: true };
+        }
+        return { success: true, source: "localStorage" };
+    }
+}
+
+/**
+ * Get all detected patterns
+ * @returns {Array} Patterns
+ */
+async function getPatterns() {
+    const fallbackPatterns = localStorage.getItem('ccPatterns');
+    const localPatterns = fallbackPatterns ? JSON.parse(fallbackPatterns) : [];
+
+    try {
+        const userId = await getUserId();
+        if (!userId) {
+            throw new Error("No user ID available");
+        }
+
+        const result = await window.supabaseClient
+            .from("patterns")
+            .select("*")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: false })
+            .execute();
+
+        if (result && result.length > 0) {
+            localStorage.setItem('ccPatterns', JSON.stringify(result));
+            console.log(`✅ Loaded ${result.length} patterns from Supabase`);
+            return result;
+        }
+
+        return localPatterns;
+
+    } catch (error) {
+        console.error("Error loading patterns from Supabase, using localStorage:", error);
+        return localPatterns;
+    }
+}
+
+
+window.saveChatMessage = saveChatMessage;
+window.getChatMessages = getChatMessages;
+window.savePattern = savePattern;
+window.getPatterns = getPatterns;
 
 console.log("✅ Task management functions initialized (with sync queue)");
