@@ -1958,7 +1958,7 @@
                     const savedEnergy = localStorage.getItem('ccDailyEnergy');
                     const savedMode = localStorage.getItem('calmCommanderMode');
                     const savedTasks = await getUserTasks();  // Load from Supabase (or localStorage fallback)
-                    const savedCompleted = localStorage.getItem('ccCompletedTasks');
+                    const savedCompleted = await getCompletedTasks();  // Load from Supabase (or localStorage fallback)
 
                     return { savedCalendarData, savedMessages, savedTasks, savedMode, savedEnergy, savedCompleted };
                 }
@@ -1995,12 +1995,10 @@
                     }
                 }
                 if (savedCompleted) {
-                    try {
-                        const parsed = JSON.parse(savedCompleted);
-                        if (Array.isArray(parsed)) {
-                            setCompletedTasks(parsed);
-                        }
-                    } catch (e) {
+                    // savedCompleted is already an array from getCompletedTasks()
+                    if (Array.isArray(savedCompleted)) {
+                        setCompletedTasks(savedCompleted);
+                    } else {
                         setCompletedTasks([]);
                     }
                 }
@@ -2313,6 +2311,14 @@
                 setCompletedTasks(updatedCompleted);
                 localStorage.setItem('ccCompletedTasks', JSON.stringify(updatedCompleted));
 
+                // Save to Supabase
+                saveCompletedTask(completedTask).catch(error => {
+                    console.error('Error saving completed task:', error);
+                });
+                deleteUserTask(taskId).catch(error => {
+                    console.error('Error deleting active task:', error);
+                });
+
                 // Close modal
                 setShowCompleteModal(false);
                 setTaskToComplete(null);
@@ -2406,6 +2412,14 @@
                 const updatedCompleted = [...completedTasks, completedTask];
                 setCompletedTasks(updatedCompleted);
                 localStorage.setItem('ccCompletedTasks', JSON.stringify(updatedCompleted));
+
+                // Save to Supabase
+                saveCompletedTask(completedTask).catch(error => {
+                    console.error('Error saving completed task:', error);
+                });
+                deleteUserTask(taskId).catch(error => {
+                    console.error('Error deleting active task:', error);
+                });
 
                 // Trigger pattern analysis if enough data (5+ tasks)
                 if (updatedCompleted.length >= 5) {
