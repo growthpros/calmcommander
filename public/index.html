@@ -1955,7 +1955,7 @@
 
                     // Everything else still from localStorage (will migrate in later phases)
                     const savedMessages = localStorage.getItem('calmCommanderMessages');
-                    const savedTasks = localStorage.getItem('calmCommanderTasks');
+                    const savedEnergy = localStorage.getItem('ccDailyEnergy');
                     const savedMode = localStorage.getItem('calmCommanderMode');
                     const savedTasks = await getUserTasks();  // Load from Supabase (or localStorage fallback)
                     const savedCompleted = localStorage.getItem('ccCompletedTasks');

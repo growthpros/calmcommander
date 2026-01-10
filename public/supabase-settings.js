@@ -34,7 +34,7 @@ async function getUserSettings() {
             .from("user_settings")
             .select("*")
             .eq("user_id", userId)
-            .execute();
+            ;
 
         if (settings && settings.length > 0) {
             const userSettings = settings[0];
@@ -93,7 +93,7 @@ async function saveUserSettings(settings) {
             .from("user_settings")
             .select("id")
             .eq("user_id", userId)
-            .execute();
+            ;
 
         const data = {};
         if (calendarInput !== undefined) data.calendar_input = calendarInput;
@@ -106,14 +106,14 @@ async function saveUserSettings(settings) {
                 .from("user_settings")
                 .update(data)
                 .eq("user_id", userId)
-                .execute();
+                ;
         } else {
             // Insert new settings
             data.user_id = userId;
             await window.supabaseClient
                 .from("user_settings")
                 .insert([data])
-                .execute();
+                ;
         }
 
         return { success: true, source: "supabase" };
@@ -166,11 +166,7 @@ async function getCalendarInput() {
  * NOTE: Only migrates calendar input now (API key is server-side)
  */
 async function migrateLocalStorageToSupabase() {
-    if (
-        !window.USE_SUPABASE ||
-        
-        !window.supabaseClient.authToken
-    ) {
+    if (!window.USE_SUPABASE || !window.supabaseClient) {
         return {
             success: false,
             reason: "Not using Supabase or not authenticated",
@@ -189,7 +185,7 @@ async function migrateLocalStorageToSupabase() {
             .from("user_settings")
             .select("*")
             .eq("user_id", userId)
-            .execute();
+            ;
 
         if (existing && existing.length > 0) {
             // Supabase already has data - don't overwrite
@@ -375,7 +371,7 @@ async function getUserTasks() {
             .select("*")
             .eq("user_id", userId)
             .eq("status", "active")
-            .execute();
+            ;
 
         if (result && result.length > 0) {
             // Save to localStorage as cache
@@ -443,7 +439,6 @@ async function saveUserTask(task, skipQueue = false) {
             id: task.id,
             user_id: userId,
             title: task.title,
-            description: task.description || null,
             category: task.category || null,
             priority: task.priority || "normal",
             focus_level: task.focusLevel || "medium",
@@ -465,7 +460,7 @@ async function saveUserTask(task, skipQueue = false) {
             .select("id")
             .eq("id", task.id)
             .eq("user_id", userId)
-            .execute();
+            ;
 
         if (existing && existing.length > 0) {
             // Update
@@ -475,14 +470,14 @@ async function saveUserTask(task, skipQueue = false) {
                 .update(taskData)
                 .eq("id", task.id)
                 .eq("user_id", userId)
-                .execute();
+                ;
         } else {
             // Insert
             console.log('➕ INSERTING new task into Supabase', task.id);
             await window.supabaseClient
                 .from("tasks")
                 .insert([taskData])
-                .execute();
+                ;
         }
 
         console.log("✅ Task saved to Supabase:", task.title);
@@ -532,7 +527,7 @@ async function updateUserTask(taskId, updates, skipQueue = false) {
             .update({ ...updates, updated_at: new Date().toISOString() })
             .eq("id", taskId)
             .eq("user_id", userId)
-            .execute();
+            ;
 
         console.log("✅ Task updated in Supabase");
         return { success: true, source: "supabase" };
@@ -582,7 +577,7 @@ async function deleteUserTask(taskId, skipQueue = false) {
             .delete()
             .eq("id", taskId)
             .eq("user_id", userId)
-            .execute();
+            ;
 
         console.log("✅ Task deleted from Supabase");
         return { success: true, source: "supabase" };
