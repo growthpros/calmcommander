@@ -753,6 +753,319 @@ async function deleteCompletedTask(taskId, skipQueue = false) {
 }
 
 // ============================================
+// NEURO-CHECK HISTORY FUNCTIONS
+// ============================================
+
+/**
+ * Get neuro-check history for current user
+ */
+async function getNeuroCheckHistory() {
+    const localHistory = localStorage.getItem("ccNeuroCheckHistory");
+    const fallbackHistory = localHistory ? JSON.parse(localHistory) : [];
+
+    if (!window.USE_SUPABASE || !window.supabaseClient) {
+        return fallbackHistory;
+    }
+
+    try {
+        const userId = await getCurrentUserId();
+        if (!userId) {
+            throw new Error("No user ID available");
+        }
+
+        const result = await window.supabaseClient
+            .from("neuro_check_history")
+            .select("*")
+            .eq("user_id", userId)
+            .order("check_date", { ascending: false })
+            .execute();
+
+        if (result && result.length > 0) {
+            localStorage.setItem("ccNeuroCheckHistory", JSON.stringify(result));
+            console.log(`✅ Loaded ${result.length} neuro-checks from Supabase`);
+            return result;
+        }
+
+        return fallbackHistory;
+    } catch (error) {
+        console.error("Error loading neuro-check history from Supabase, using localStorage:", error);
+        return fallbackHistory;
+    }
+}
+
+/**
+ * Save a neuro-check
+ * @param {Object} checkData - Neuro-check data
+ * @param {Boolean} skipQueue - Skip queueing (used when processing queue)
+ */
+async function saveNeuroCheck(checkData, skipQueue = false) {
+    const localHistory = localStorage.getItem("ccNeuroCheckHistory");
+    let history = localHistory ? JSON.parse(localHistory) : [];
+
+    const existingIndex = history.findIndex((c) => c.id === checkData.id);
+    if (existingIndex >= 0) {
+        history[existingIndex] = checkData;
+    } else {
+        history.push(checkData);
+    }
+
+    localStorage.setItem("ccNeuroCheckHistory", JSON.stringify(history));
+
+    if (!window.USE_SUPABASE || !window.supabaseClient) {
+        if (!skipQueue) {
+            queueOperation({ type: "create_neuro_check", data: checkData });
+        }
+        return { success: true, source: "localStorage" };
+    }
+
+    try {
+        const userId = await getCurrentUserId();
+        if (!userId) {
+            throw new Error("No user ID available");
+        }
+
+        const neuroCheckId = crypto.randomUUID();
+        const data = {
+            id: neuroCheckId,
+            user_id: userId,
+            check_date: checkData.checkDate || new Date().toISOString(),
+            brain_mode: checkData.brainMode || null,
+            energy_level: checkData.energyLevel || null,
+            focus_level: checkData.focusLevel || null,
+            executive_function_score: checkData.executiveFunctionScore || null,
+            notes: checkData.notes || null,
+            symptoms: checkData.symptoms || [],
+        };
+
+        await window.supabaseClient
+            .from("neuro_check_history")
+            .insert([data]);
+
+        console.log("✅ Neuro-check saved to Supabase");
+        return { success: true, source: "supabase" };
+    } catch (error) {
+        console.error("Error saving neuro-check to Supabase:", error);
+        if (!skipQueue) {
+            queueOperation({ type: "create_neuro_check", data: checkData });
+        }
+        return { success: true, source: "localStorage", queued: true };
+    }
+}
+
+/**
+ * Delete a neuro-check
+ */
+async function deleteNeuroCheck(checkId, skipQueue = false) {
+    const localHistory = localStorage.getItem("ccNeuroCheckHistory");
+    let history = localHistory ? JSON.parse(localHistory) : [];
+
+    history = history.filter((c) => c.id !== checkId);
+    localStorage.setItem("ccNeuroCheckHistory", JSON.stringify(history));
+
+    if (!window.USE_SUPABASE || !window.supabaseClient) {
+        if (!skipQueue) {
+            queueOperation({ type: "delete_neuro_check", data: { id: checkId } });
+        }
+        return { success: true, source: "localStorage" };
+    }
+
+    try {
+        const userId = await getCurrentUserId();
+        if (!userId) {
+            throw new Error("No user ID available");
+        }
+
+        await window.supabaseClient
+            .from("neuro_check_history")
+            .eq("id", checkId)
+            .eq("user_id", userId)
+            .delete();
+
+        console.log("✅ Neuro-check deleted from Supabase");
+        return { success: true, source: "supabase" };
+    } catch (error) {
+        console.error("Error deleting neuro-check from Supabase:", error);
+        if (!skipQueue) {
+            queueOperation({ type: "delete_neuro_check", data: { id: checkId } });
+        }
+        return { success: true, source: "localStorage", queued: true };
+    }
+}
+
+// ============================================
+// DAILY CAPACITY FUNCTIONS
+// ============================================
+
+/**
+ * Get daily capacity for a specific date
+ * @param {String} date - Date string (YYYY-MM-DD format)
+ */
+async function getDailyCapacity(date) {
+    const localCapacity = localStorage.getItem("ccDailyCapacity");
+    const allCapacity = localCapacity ? JSON.parse(localCapacity) : {};
+    const fallbackCapacity = allCapacity[date] || null;
+
+    if (!window.USE_SUPABASE || !window.supabaseClient) {
+        return fallbackCapacity;
+    }
+
+    try {
+        const userId = await getCurrentUserId();
+        if (!userId) {
+            throw new Error("No user ID available");
+        }
+
+        const result = await window.supabaseClient
+            .from("daily_capacity")
+            .select("*")
+            .eq("user_id", userId)
+            .eq("date", date)
+            .execute();
+
+        if (result && result.length > 0) {
+            allCapacity[date] = result[0];
+            localStorage.setItem("ccDailyCapacity", JSON.stringify(allCapacity));
+            console.log(`✅ Loaded daily capacity for ${date} from Supabase`);
+            return result[0];
+        }
+
+        return fallbackCapacity;
+    } catch (error) {
+        console.error("Error loading daily capacity from Supabase, using localStorage:", error);
+        return fallbackCapacity;
+    }
+}
+
+/**
+ * Save daily capacity
+ * @param {Object} capacityData - Capacity data including date
+ * @param {Boolean} skipQueue - Skip queueing (used when processing queue)
+ */
+async function saveDailyCapacity(capacityData, skipQueue = false) {
+    const localCapacity = localStorage.getItem("ccDailyCapacity");
+    let allCapacity = localCapacity ? JSON.parse(localCapacity) : {};
+
+    const date = capacityData.date;
+    allCapacity[date] = capacityData;
+    localStorage.setItem("ccDailyCapacity", JSON.stringify(allCapacity));
+
+    if (!window.USE_SUPABASE || !window.supabaseClient) {
+        if (!skipQueue) {
+            queueOperation({ type: "save_daily_capacity", data: capacityData });
+        }
+        return { success: true, source: "localStorage" };
+    }
+
+    try {
+        const userId = await getCurrentUserId();
+        if (!userId) {
+            throw new Error("No user ID available");
+        }
+
+        const data = {
+            user_id: userId,
+            date: capacityData.date,
+            brain_mode: capacityData.brainMode || null,
+            energy_level: capacityData.energyLevel || null,
+            spoons_available: capacityData.spoonsAvailable || 12,
+            spoons_used: capacityData.spoonsUsed || 0,
+            tasks_completed: capacityData.tasksCompleted || 0,
+            notes: capacityData.notes || null,
+            created_at: new Date().toISOString(),
+        };
+
+        const existing = await window.supabaseClient
+            .from("daily_capacity")
+            .select("id")
+            .eq("user_id", userId)
+            .eq("date", date)
+            .execute();
+
+        if (existing && existing.length > 0) {
+            await window.supabaseClient
+                .from("daily_capacity")
+                .update(data)
+                .eq("user_id", userId)
+                .eq("date", date);
+        } else {
+            data.id = crypto.randomUUID();
+            await window.supabaseClient
+                .from("daily_capacity")
+                .insert([data]);
+        }
+
+        console.log("✅ Daily capacity saved to Supabase for:", date);
+        return { success: true, source: "supabase" };
+    } catch (error) {
+        console.error("Error saving daily capacity to Supabase:", error);
+        if (!skipQueue) {
+            queueOperation({ type: "save_daily_capacity", data: capacityData });
+        }
+        return { success: true, source: "localStorage", queued: true };
+    }
+}
+
+/**
+ * Update daily capacity for a specific date
+ * @param {String} date - Date string (YYYY-MM-DD format)
+ * @param {Object} updates - Fields to update
+ * @param {Boolean} skipQueue - Skip queueing (used when processing queue)
+ */
+async function updateDailyCapacity(date, updates, skipQueue = false) {
+    const localCapacity = localStorage.getItem("ccDailyCapacity");
+    let allCapacity = localCapacity ? JSON.parse(localCapacity) : {};
+
+    if (allCapacity[date]) {
+        allCapacity[date] = { ...allCapacity[date], ...updates };
+    } else {
+        allCapacity[date] = { date, ...updates };
+    }
+    localStorage.setItem("ccDailyCapacity", JSON.stringify(allCapacity));
+
+    if (!window.USE_SUPABASE || !window.supabaseClient) {
+        if (!skipQueue) {
+            queueOperation({ type: "update_daily_capacity", data: { date, ...updates } });
+        }
+        return { success: true, source: "localStorage" };
+    }
+
+    try {
+        const userId = await getCurrentUserId();
+        if (!userId) {
+            throw new Error("No user ID available");
+        }
+
+        const updateData = { ...updates };
+        if (updates.brainMode !== undefined) updateData.brain_mode = updates.brainMode;
+        if (updates.energyLevel !== undefined) updateData.energy_level = updates.energyLevel;
+        if (updates.spoonsAvailable !== undefined) updateData.spoons_available = updates.spoonsAvailable;
+        if (updates.spoonsUsed !== undefined) updateData.spoons_used = updates.spoonsUsed;
+        if (updates.tasksCompleted !== undefined) updateData.tasks_completed = updates.tasksCompleted;
+
+        delete updateData.brainMode;
+        delete updateData.energyLevel;
+        delete updateData.spoonsAvailable;
+        delete updateData.spoonsUsed;
+        delete updateData.tasksCompleted;
+
+        await window.supabaseClient
+            .from("daily_capacity")
+            .update(updateData)
+            .eq("user_id", userId)
+            .eq("date", date);
+
+        console.log("✅ Daily capacity updated in Supabase for:", date);
+        return { success: true, source: "supabase" };
+    } catch (error) {
+        console.error("Error updating daily capacity in Supabase:", error);
+        if (!skipQueue) {
+            queueOperation({ type: "update_daily_capacity", data: { date, ...updates } });
+        }
+        return { success: true, source: "localStorage", queued: true };
+    }
+}
+
+// ============================================
 // EXPOSE TO GLOBAL SCOPE
 // ============================================
 
@@ -763,6 +1076,12 @@ window.deleteUserTask = deleteUserTask;
 window.getCompletedTasks = getCompletedTasks;
 window.saveCompletedTask = saveCompletedTask;
 window.deleteCompletedTask = deleteCompletedTask;
+window.getNeuroCheckHistory = getNeuroCheckHistory;
+window.saveNeuroCheck = saveNeuroCheck;
+window.deleteNeuroCheck = deleteNeuroCheck;
+window.getDailyCapacity = getDailyCapacity;
+window.saveDailyCapacity = saveDailyCapacity;
+window.updateDailyCapacity = updateDailyCapacity;
 window.processSyncQueue = processSyncQueue;
 
 console.log("✅ Task management functions initialized (with sync queue)");
