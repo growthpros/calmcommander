@@ -34,7 +34,7 @@ async function getUserSettings() {
             .from("user_settings")
             .select("*")
             .eq("user_id", userId)
-            ;
+            .execute();
 
         if (settings && settings.length > 0) {
             const userSettings = settings[0];
@@ -93,7 +93,7 @@ async function saveUserSettings(settings) {
             .from("user_settings")
             .select("id")
             .eq("user_id", userId)
-            ;
+            .execute();
 
         const data = {};
         if (calendarInput !== undefined) data.calendar_input = calendarInput;
@@ -185,7 +185,7 @@ async function migrateLocalStorageToSupabase() {
             .from("user_settings")
             .select("*")
             .eq("user_id", userId)
-            ;
+            .execute();
 
         if (existing && existing.length > 0) {
             // Supabase already has data - don't overwrite
@@ -286,11 +286,7 @@ function queueOperation(operation) {
 async function processSyncQueue() {
     if (isSyncing || taskSyncQueue.length === 0) return;
 
-    if (
-        !window.USE_SUPABASE ||
-        
-        !window.supabaseClient.authToken
-    ) {
+    if (!window.USE_SUPABASE || !window.supabaseClient) {
         console.log("⏸️ Sync paused - Supabase not available");
         return;
     }
@@ -371,7 +367,7 @@ async function getUserTasks() {
             .select("*")
             .eq("user_id", userId)
             .eq("status", "active")
-            ;
+            .execute();
 
         if (result && result.length > 0) {
             // Save to localStorage as cache
@@ -460,7 +456,7 @@ async function saveUserTask(task, skipQueue = false) {
             .select("id")
             .eq("id", task.id)
             .eq("user_id", userId)
-            ;
+            .execute();
 
         if (existing && existing.length > 0) {
             // Update
@@ -555,11 +551,7 @@ async function deleteUserTask(taskId, skipQueue = false) {
     localStorage.setItem("calmCommanderTasks", JSON.stringify(tasks));
 
     // If not using Supabase, queue for later
-    if (
-        !window.USE_SUPABASE ||
-        
-        !window.supabaseClient.authToken
-    ) {
+    if (!window.USE_SUPABASE || !window.supabaseClient) {
         if (!skipQueue) {
             queueOperation({ type: "delete", data: { id: taskId } });
         }
